@@ -57,14 +57,14 @@
             <dt>Games in progress</dt><dd id="games"></dd>
             <dt>Open rooms</dt><dd id="rooms"></dd>
             <dt>Players online</dt><dd id="players"></dd>
-            <dt>Version</dt><dd id="version"></dd>
+            <dt>Version</dt><dd><span id="version"></span> (<a id="notes" href="https://github.com/jheagle/cloakfall/releases" target="_blank" rel="noopener">release notes</a>)</dd>
         </dl>
         <div class="actions">
             <button type="button" id="recheck">Check again</button>
             <span class="checked" id="checked"></span>
         </div>
     </section>
-    <p><a href="index.html">Back to Cloakfall</a></p>
+    <p><a href="index.html">Back to Cloakfall</a> · <a href="https://github.com/jheagle/cloakfall/releases" target="_blank" rel="noopener">All releases</a></p>
 </main>
 <script>
   // The lobby's address, worked out the same way as src/network/lobbySocket.ts's lobbyUrl (port 3002 on the host this
@@ -88,6 +88,10 @@
       byId('rooms').textContent = status.rooms
       byId('players').textContent = status.players
       byId('version').textContent = status.version
+      // The lobby's own version's notes; every release when it doesn't know its version (run without npm)
+      byId('notes').href = /^\d+\.\d+\.\d+/.test(status.version)
+        ? `https://github.com/jheagle/cloakfall/releases/tag/v${status.version}`
+        : 'https://github.com/jheagle/cloakfall/releases'
     }
     byId('checked').textContent = state === 'checking' ? '' : `Checked at ${new Date().toLocaleTimeString()}`
   }
