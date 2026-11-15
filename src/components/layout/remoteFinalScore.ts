@@ -1,6 +1,7 @@
 import treeloom from 'treeloom'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { Player } from '../../types'
+import { htmlEscape } from 'si-funciona'
 
 const listener = (listenerFunc: string) => [{ listenerFunc, listenerArgs: {}, listenerOptions: false }]
 
@@ -28,7 +29,7 @@ const remoteFinalScore = (players: Player[] = []): DomItem => treeloom.createDom
         nodeName: 'div',
         attributes: {
           className: 'score-card',
-          innerHTML: `<strong>${player.name}</strong><hr><br></strong><strong>Status:</strong> ${Math.round(player.status * 100) / 100}%, <strong>Sunk:</strong> ${player.attacks.sunk}<br><strong>Hit:</strong> ${player.attacks.hit} / <strong>Miss:</strong> ${player.attacks.miss}<br><strong>Turns:</strong> ${player.turnCnt}`
+          innerHTML: `<strong>${htmlEscape(player.name)}</strong><hr><br><strong>Status:</strong> ${Math.round(player.status * 100) / 100}%, <strong>Sunk:</strong> ${player.attacks.sunk}<br><strong>Hit:</strong> ${player.attacks.hit} / <strong>Miss:</strong> ${player.attacks.miss}<br><strong>Turns:</strong> ${player.turnCnt}`
         }
       }))
     },
