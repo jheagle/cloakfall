@@ -5,7 +5,7 @@ import { Server, Socket } from 'socket.io'
 import { startRoomGame, watchRoomGame } from './gameplay'
 import { forTransport } from './transport'
 import { isHostOnlyStage, isRemoteSessionActive, remotePlacementStage } from '../src/setup/remotePlacement'
-import type { Server as HttpServer } from 'http'
+import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'http'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { ForwardedEvent } from 'treeloom/dist/events/types'
 import type { HintSetting } from '../src/setup/gameOptions'
@@ -82,6 +82,39 @@ const roomState = (rooms: Map<string, Room>, roomCode: string): RoomState => {
   }
 }
 
+/** What GET /status answers: whether the lobby is up, since when, and how busy it is (counts only: no names or room
+ * codes, since anyone can read it). The status page (status.html) shows it to players. */
+export interface LobbyStatus {
+  service: 'cloakfall-lobby'
+  status: 'up'
+  version: string
+  startedAt: string
+  uptimeSeconds: number
+  rooms: number
+  games: number
+  players: number
+}
+
+/**
+ * The plain HTTP side of the lobby (socket.io handles its own /socket.io/ path before this runs): GET /status answers
+ * with LobbyStatus, readable from any page (it holds nothing private); anything else is a 404.
+ * @param status
+ */
+const httpHandler = (status: () => LobbyStatus) => (request: IncomingMessage, response: ServerResponse): void => {
+  const path = (request.url ?? '').split('?')[0]
+  if (path === '/status' && (request.method === 'GET' || request.method === 'HEAD')) {
+    response.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': '*'
+    })
+    response.end(request.method === 'HEAD' ? undefined : JSON.stringify(status()))
+    return
+  }
+  response.writeHead(404, { 'Content-Type': 'text/plain' })
+  response.end('Not found')
+}
+
 /**
  * The remote lobby: players create or join a room by a short code, and see who else is in it as they join or
  * leave. This is hosting, joining and presence only - nothing about actual gameplay is wired up here.
@@ -90,9 +123,20 @@ const roomState = (rooms: Map<string, Room>, roomCode: string): RoomState => {
  * version; worth revisiting if a host leaving mid-session turns out to be disruptive in practice.
  */
 export const createLobbyServer = (): HttpServer => {
-  const httpServer = createServer()
-  const io = new Server(httpServer, { cors: { origin: '*' } })
+  const startedAt = new Date()
   const rooms = new Map<string, Room>()
+  const httpServer: HttpServer = createServer(httpHandler(() => ({
+    service: 'cloakfall-lobby',
+    status: 'up',
+    // Set when started through npm (npm run serve:lobby); a host that runs node directly can set it too.
+    version: process.env.npm_package_version ?? 'unknown',
+    startedAt: startedAt.toISOString(),
+    uptimeSeconds: Math.floor((Date.now() - startedAt.getTime()) / 1000),
+    rooms: rooms.size,
+    games: [...rooms.values()].filter(room => room.game && !isRoomGameOver(room.game)).length,
+    players: io.engine.clientsCount
+  })))
+  const io: Server = new Server(httpServer, { cors: { origin: '*' } })
 
   io.on('connection', (socket: Socket) => {
     let currentRoom: string | null = null

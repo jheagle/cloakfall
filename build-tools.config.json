@@ -12,6 +12,10 @@
       "to": "../joshuaheagle.local/projects/cloakfall/browser/css"
     },
     {
+      "from": "status.html",
+      "to": "../joshuaheagle.local/projects/cloakfall"
+    },
+    {
       "from": "icons/*",
       "to": "../joshuaheagle.local/projects/cloakfall/icons"
     }
