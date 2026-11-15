@@ -1,4 +1,5 @@
 import treeloom from 'treeloom'
+import { releaseNotesUrl, version } from '../../version'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 
 const listener = (listenerFunc: string) => [{ listenerFunc, listenerArgs: {}, listenerOptions: false }]
@@ -20,6 +21,16 @@ const mainMenu = (): DomItem => treeloom.createDomItem({
       },
       children: [
         { nodeName: 'p', attributes: { className: 'tagline', textContent: 'Every fleet is cloaked. Fire blind into the dark. The last fleet still hidden wins.' } },
+        // Which version is running, with its release notes and the online server's status (both open in a new tab, so
+        // the game itself is kept)
+        {
+          nodeName: 'p',
+          attributes: {
+            className: 'version-line',
+            innerHTML: `v${version} · <a href="${releaseNotesUrl()}" target="_blank" rel="noopener">What's new</a> · ` +
+              '<a href="status.html" target="_blank" rel="noopener">Server status</a>'
+          }
+        },
         {
           nodeName: 'div',
           attributes: {
