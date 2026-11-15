@@ -59,6 +59,35 @@ describe('isRoomGameOver', () => {
   })
 })
 
+describe('GET /status', () => {
+  test('says the lobby is up, with counts only (no names or room codes)', async () => {
+    const response = await fetch(`${baseUrl}/status`)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('access-control-allow-origin')).toBe('*')
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    const status = await response.json()
+    expect(status).toMatchObject({ service: 'cloakfall-lobby', status: 'up', rooms: 0, games: 0, players: 0 })
+    expect(typeof status.version).toBe('string')
+    expect(Number.isNaN(Date.parse(status.startedAt))).toBe(false)
+    expect(status.uptimeSeconds).toBeGreaterThanOrEqual(0)
+  })
+
+  test('counts rooms and connected players', async () => {
+    const host = connect()
+    await emit<RoomState>(host, 'createRoom', { name: 'Alice', roomName: 'Secret lobby' })
+    connect()
+    await new Promise(resolve => setTimeout(resolve, 100))
+    const text = await (await fetch(`${baseUrl}/status`)).text()
+    expect(JSON.parse(text)).toMatchObject({ rooms: 1, games: 0, players: 2 })
+    expect(text).not.toMatch(/Alice|Secret lobby/)
+  })
+
+  test('anything else is a 404', async () => {
+    expect((await fetch(`${baseUrl}/`)).status).toBe(404)
+    expect((await fetch(`${baseUrl}/status`, { method: 'POST' })).status).toBe(404)
+  })
+})
+
 describe('the lobby server', () => {
   test('creating a room makes the creator its host and only player', async () => {
     const host = connect()

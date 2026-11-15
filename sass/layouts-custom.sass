@@ -144,12 +144,21 @@
     font-size: 1.4rem
     min-height: 1.4rem
 
+    a
+      color: inherit
+      text-decoration: underline
+
 .remote-entry
   .remote-choice-status, .remote-host-status, .remote-code-status, .remote-join-status
     color: #f4a742
     font-size: 1.4rem
     text-align: center
     min-height: 1.4rem
+
+    // The unreachable-server error links to status.html (see lobbySocket.ts's UNREACHABLE_ERROR)
+    a
+      color: inherit
+      text-decoration: underline
 
   .remote-join-message
     color: white

@@ -32,8 +32,10 @@ export const connectLobbySocket = (url: string = lobbyUrl()): Socket => {
   return socket
 }
 
-/** What a lobby call resolves with when the server never answers (not running, unreachable, or too slow). */
-export const UNREACHABLE_ERROR = "Can't reach the game server. Check that it is running, then try again."
+/** What a lobby call resolves with when the server never answers (not running, unreachable, or too slow). Shown as
+ * HTML: it links to the status page (status.html, next to the game), which checks the server itself, in a new tab so
+ * the game's own screen is kept. */
+export const UNREACHABLE_ERROR = 'Can\'t reach the game server. <a href="status.html" target="_blank" rel="noopener">Check the server status</a>, then try again.'
 
 let requestTimeoutMs = 8000
 
