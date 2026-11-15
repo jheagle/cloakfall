@@ -3,6 +3,7 @@
  */
 import { io as ioClient, Socket as ClientSocket } from 'socket.io-client'
 import { createLobbyServer, isRoomGameOver } from './lobbyServer'
+import * as gameplay from './gameplay'
 import type { Server as HttpServer } from 'http'
 import type { RoomState } from './lobbyServer'
 import type { RoomGame } from './gameplay'
@@ -56,6 +57,83 @@ describe('isRoomGameOver', () => {
   test('is true once fewer than 2 players are still alive', () => {
     expect(isRoomGameOver(gameWith([100, 0]))).toBe(true)
     expect(isRoomGameOver(gameWith([0, 0, 0]))).toBe(true)
+  })
+})
+
+describe('payloads from clients are never trusted', () => {
+  const junk = [undefined, null, 5, 'x', [], { name: 5 }, { name: {}, roomName: [] }, { roomCode: {}, name: 'Bo' },
+    { hints: 'loud', robots: 'all' }, { hints: 'on', robots: 1.5 }, { hints: 'on', robots: NaN }, { itemId: null }]
+  const events = ['createRoom', 'peekRoom', 'joinRoom', 'startGame', 'gameAction']
+
+  test('junk sent to every event, with and without a callback, never stops the server', async () => {
+    const attacker = connect()
+    await new Promise(resolve => attacker.on('connect', resolve))
+    for (const event of events) {
+      for (const payload of junk) {
+        attacker.emit(event, payload)
+        attacker.emit(event)
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 200))
+    const answers = await Promise.all(events.filter(event => event !== 'gameAction').flatMap(event => junk.map(payload => emit<{ error?: string }>(attacker, event, payload as object))))
+    expect(answers.every(answer => typeof answer.error === 'string')).toBe(true)
+    // Still serving: a real room works afterwards, from a fresh connection.
+    const host = connect()
+    const state = await emit<RoomState>(host, 'createRoom', { name: 'Alice', roomName: 'Still here' })
+    expect(state.roomName).toBe('Still here')
+  })
+
+  test('a handler that throws answers with an error, logs it, and the server keeps serving', async () => {
+    const failure = jest.spyOn(gameplay, 'startRoomGame').mockImplementation(() => { throw new Error('boom') })
+    const log = jest.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const host = connect()
+      const state = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Lobby' })
+      await emit(connect(), 'joinRoom', { roomCode: state.roomCode, name: 'Bo' })
+      expect(await emit(host, 'startGame', { hints: 'on' })).toEqual({ error: 'Something went wrong, please try again' })
+      expect(log).toHaveBeenCalledWith('cloakfall lobby: startGame failed: boom')
+    } finally {
+      failure.mockRestore()
+      log.mockRestore()
+    }
+    expect(await emit(connect(), 'peekRoom', { roomCode: 'none' })).toEqual({ error: 'No room with that code' })
+  })
+
+  test('junk game actions during a real game are ignored, and the game goes on', async () => {
+    const host = connect()
+    const joiner = connect()
+    const pushes: object[] = []
+    joiner.on('gameUpdate', body => pushes.push(body))
+    const state = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Lobby' })
+    await emit(joiner, 'joinRoom', { roomCode: state.roomCode, name: 'Bo' })
+    expect(await emit(host, 'startGame', { hints: 'on' })).toEqual({ started: true })
+    for (const payload of [null, undefined, 5, [], { itemId: null }, { itemId: 'x', eventType: 'click' }, { itemId: 1, eventType: {} },
+      { itemId: 1, eventType: 'click', targetState: JSON.parse('{"__proto__": {"x": 1}, "dispatchEvent": 1}') }]) {
+      joiner.emit('gameAction', payload)
+      host.emit('gameAction', payload)
+    }
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(pushes.length).toBeGreaterThan(0)
+    expect(await emit(connect(), 'peekRoom', { roomCode: state.roomCode })).toEqual({ roomName: 'Lobby', hostName: 'Ann' })
+  })
+
+  test('names are cleaned and limited', async () => {
+    const host = connect()
+    expect(await emit(host, 'createRoom', { name: 'a'.repeat(25), roomName: 'Lobby' })).toEqual({ error: 'Names can be up to 24 characters' })
+    expect(await emit(host, 'createRoom', { name: 'Ann', roomName: 'b'.repeat(41) })).toEqual({ error: 'Lobby names can be up to 40 characters' })
+    const state = await emit<RoomState>(host, 'createRoom', { name: '  Ann\u0000  Lee ', roomName: ' My   lobby ' })
+    expect(state.roomName).toBe('My lobby')
+    expect(state.players[0].name).toBe('Ann Lee')
+  })
+
+  test('startGame refuses an unknown hint setting or a robot count that is not a whole number', async () => {
+    const host = connect()
+    const state = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Lobby' })
+    await emit(connect(), 'joinRoom', { roomCode: state.roomCode, name: 'Bo' })
+    expect(await emit(host, 'startGame', { hints: 'loud' })).toEqual({ error: 'Unknown hint setting' })
+    expect(await emit(host, 'startGame', { hints: 'on', robots: 'all' })).toEqual({ error: 'The number of robots must be a whole number' })
+    expect(await emit(host, 'startGame', { hints: 'on', robots: 1.5 })).toEqual({ error: 'The number of robots must be a whole number' })
+    expect(await emit(host, 'startGame', { hints: 'on' })).toEqual({ started: true })
   })
 })
 
