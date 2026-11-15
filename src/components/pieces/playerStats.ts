@@ -1,6 +1,7 @@
 import { getGameMode, getHintSetting } from '../../setup/gameOptions'
 import type { DomItem, DomItemConfig } from 'treeloom/dist/domItem/types'
 import type { Player } from '../../types'
+import { htmlEscape } from 'si-funciona'
 
 /**
  * The defined attributes for each player. The name and status run across the top; the player's checkboxes are stacked
@@ -71,7 +72,7 @@ const playerStats = (player: Player, status: string = '', item: DomItem = player
         nodeName: 'span',
         attributes: {
           className: 'player-name',
-          innerHTML: `<strong style="color: ${player.colour}">${player.name}</strong>: ${status}`
+          innerHTML: `<strong style="color: ${player.colour}">${htmlEscape(player.name)}</strong>: ${status}`
         }
       },
       ...(controls.length

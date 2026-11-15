@@ -154,6 +154,25 @@ describe('the Online Multiplayer tile and its lobby', () => {
     expect(window.location.search).toBe('')
   })
 
+  test('names from other players show as text on every lobby screen and never become markup', async () => {
+    const hostile = '<img src=x onerror=a()>'
+    const host = rawPlayer()
+    const { roomCode } = await rawEmit(host, 'createRoom', { name: hostile, roomName: '<b>Bold</b>' })
+
+    connectLobbySocket(baseUrl)
+    const doc = openMenu()
+    showRemoteEntry(byClass(doc, 'main-menu'), roomCode)
+    await waitFor(() => byClass(doc, 'remote-join-confirm').element.style.display !== 'none')
+    expect(byClass(doc, 'remote-join-message').element.textContent).toBe(`You are joining ${hostile}'s <b>Bold</b>.`)
+    expect(byClass(doc, 'remote-join-message').element.querySelector('img, b')).toBeNull()
+
+    await joinRoomByCode(doc, roomCode, 'Bob')
+    await waitFor(() => byClass(doc, 'waiting-room').element.style.display !== 'none')
+    expect(byClass(doc, 'waiting-room-players').element.textContent).toContain(`${hostile} (Host)`)
+    expect(byClass(doc, 'waiting-room-name').element.textContent).toBe('Lobby: <b>Bold</b>')
+    expect(byClass(doc, 'waiting-room').element.querySelector('img, b')).toBeNull()
+  })
+
   test('joining an existing room by its code shows both players in the waiting room', async () => {
     const host = rawPlayer()
     const { roomCode } = await rawEmit(host, 'createRoom', { name: 'Alice', roomName: 'Pirate Battle' })

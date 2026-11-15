@@ -26,6 +26,11 @@ describe('playerStats', () => {
     expect(shipList(stats).children).toHaveLength(2)
   })
 
+  test('a player name is shown as text, never as markup (names come from other players online)', () => {
+    const stats = playerStats({ ...player, name: '<img src=x onerror=a()>' }, '90%', root)
+    expect(stats.children[0].attributes.innerHTML).toBe('<strong style="color: #ff6b6b">&lt;img src=x onerror=a()&gt;</strong>: 90%')
+  })
+
   test('each ship line has its name, size and status rounded to two places', () => {
     const lines = shipList(playerStats(player, '', root)).children.map(item => item.attributes.innerHTML)
     expect(lines).toEqual([

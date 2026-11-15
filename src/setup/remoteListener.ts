@@ -5,6 +5,7 @@ import { show, update } from './showLobby'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { HintSetting } from './gameOptions'
 import type { RoomState } from '../../server/lobbyServer'
+import { htmlEscape } from 'si-funciona'
 
 /** The room's own last known state (its code, name, host, and players) - kept up to date by renderRoomState
  * below regardless of whether the waiting room is currently shown, so Play Again (see remotePlayAgainListener.ts)
@@ -41,7 +42,7 @@ const peekAndConfirm = async (entry: DomItem, roomCode: string): Promise<void> =
   }
   update(treeloom.getChildrenByClass('remote-code-status', entry)[0], { innerHTML: '' })
   pendingJoinCode = roomCode
-  update(treeloom.getChildrenByClass('remote-join-message', entry)[0], { innerHTML: `You are joining ${result.hostName}'s ${result.roomName}.` })
+  update(treeloom.getChildrenByClass('remote-join-message', entry)[0], { innerHTML: `You are joining ${htmlEscape(result.hostName)}'s ${htmlEscape(result.roomName)}.` })
   showSubPanel(entry, 'remote-join-confirm')
   ;(treeloom.getChildrenByName('remote-join-name', entry)[0].element as HTMLInputElement).focus()
 }
@@ -71,10 +72,10 @@ const renderRoomState = (menu: DomItem, state: RoomState): void => {
   state.players.forEach(player => {
     treeloom.renderHtml(treeloom.createDomItem({
       nodeName: 'li',
-      attributes: { innerHTML: player.id === state.hostId ? `${player.name} (Host)` : player.name }
+      attributes: { innerHTML: player.id === state.hostId ? `${htmlEscape(player.name)} (Host)` : htmlEscape(player.name) }
     }), list)
   })
-  update(treeloom.getChildrenByClass('waiting-room-name', menu)[0], { innerHTML: `Lobby: ${state.roomName}` })
+  update(treeloom.getChildrenByClass('waiting-room-name', menu)[0], { innerHTML: `Lobby: ${htmlEscape(state.roomName)}` })
   update(treeloom.getChildrenByClass('waiting-room-code', menu)[0], { innerHTML: `Room Code: ${state.roomCode}` })
   show(treeloom.getChildrenByClass('waiting-room-host-controls', menu)[0], state.hostId === getSocketId())
   // Robots only ever fill whatever seats the room's own connected players haven't - this shrinks/grows as
