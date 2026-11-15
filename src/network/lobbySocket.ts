@@ -32,6 +32,34 @@ export const connectLobbySocket = (url: string = lobbyUrl()): Socket => {
   return socket
 }
 
+/** What a lobby call resolves with when the server never answers (not running, unreachable, or too slow). */
+export const UNREACHABLE_ERROR = "Can't reach the game server. Check that it is running, then try again."
+
+let requestTimeoutMs = 8000
+
+/**
+ * How long a lobby call waits for the server's answer before giving up with UNREACHABLE_ERROR (default 8 seconds).
+ * Tests shorten it.
+ * @param ms
+ */
+export const setLobbyTimeout = (ms: number): void => {
+  requestTimeoutMs = ms
+}
+
+/**
+ * Send a lobby call and resolve with the server's answer, or with `{ error: UNREACHABLE_ERROR }` if none arrives in
+ * time. Without the timeout, socket.io buffers the call while it keeps trying to connect, so an unreachable lobby left
+ * the screen on "Looking up room..." forever. A call that timed out is dropped from socket.io's buffer, so it is not
+ * sent later if the connection comes back.
+ * @param event
+ * @param payload
+ */
+const request = <T>(event: string, payload: object): Promise<T | { error: string }> =>
+  new Promise(resolve => {
+    connectLobbySocket().timeout(requestTimeoutMs).emit(event, payload, (timedOut: Error | null, answer: T) =>
+      resolve(timedOut ? { error: UNREACHABLE_ERROR } : answer))
+  })
+
 /** Close the lobby socket and forget it, so the next connectLobbySocket call starts fresh. */
 export const disconnectLobbySocket = (): void => {
   socket?.close()
@@ -40,16 +68,16 @@ export const disconnectLobbySocket = (): void => {
 
 /** Create a room as its host, resolving with the room's state once the server acknowledges it, or an error. */
 export const createRoom = (name: string, roomName: string): Promise<RoomState | { error: string }> =>
-  new Promise(resolve => connectLobbySocket().emit('createRoom', { name, roomName }, resolve))
+  request('createRoom', { name, roomName })
 
 /** Look up a room's own lobby name and host's name by its code, without joining it - lets a joiner see whose
  * game it is before they commit their own name (see mainMenu.ts's remote-join-confirm). */
 export const peekRoom = (roomCode: string): Promise<{ roomName: string, hostName: string } | { error: string }> =>
-  new Promise(resolve => connectLobbySocket().emit('peekRoom', { roomCode }, resolve))
+  request('peekRoom', { roomCode })
 
 /** Join an existing room by its code, resolving with the room's state, or an error if it could not be joined. */
 export const joinRoom = (roomCode: string, name: string): Promise<RoomState | { error: string }> =>
-  new Promise(resolve => connectLobbySocket().emit('joinRoom', { roomCode, name }, resolve))
+  request('joinRoom', { roomCode, name })
 
 /** Be told whenever the room's state changes (a player joins or leaves). Replaces any previous listener rather
  * than adding another - Play Again (see remotePlayAgainListener.ts) re-enters the same waiting room, which
@@ -71,7 +99,7 @@ export const getSocketId = (): string | undefined => connectLobbySocket().id
  * `robots` (if any) fill whatever seats are still empty - the server validates this against the room's actual
  * remaining capacity. */
 export const startGame = (hints: HintSetting, robots: number = 0): Promise<{ started: true } | { error: string }> =>
-  new Promise(resolve => connectLobbySocket().emit('startGame', { hints, robots }, resolve))
+  request('startGame', { hints, robots })
 
 /** Be told whenever the game's state changes - the redacted view of the whole screen, for this connection alone.
  * Replaces any previous listener rather than adding another - a rematch (see remotePlayAgainListener.ts,
