@@ -3,6 +3,7 @@
  */
 import { io as ioClient, Socket as ClientSocket } from 'socket.io-client'
 import { createLobbyServer, isRoomGameOver } from './lobbyServer'
+import * as gameplay from './gameplay'
 import type { Server as HttpServer } from 'http'
 import type { RoomState } from './lobbyServer'
 import type { RoomGame } from './gameplay'
@@ -80,6 +81,40 @@ describe('payloads from clients are never trusted', () => {
     const host = connect()
     const state = await emit<RoomState>(host, 'createRoom', { name: 'Alice', roomName: 'Still here' })
     expect(state.roomName).toBe('Still here')
+  })
+
+  test('a handler that throws answers with an error, logs it, and the server keeps serving', async () => {
+    const failure = jest.spyOn(gameplay, 'startRoomGame').mockImplementation(() => { throw new Error('boom') })
+    const log = jest.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const host = connect()
+      const state = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Lobby' })
+      await emit(connect(), 'joinRoom', { roomCode: state.roomCode, name: 'Bo' })
+      expect(await emit(host, 'startGame', { hints: 'on' })).toEqual({ error: 'Something went wrong, please try again' })
+      expect(log).toHaveBeenCalledWith('cloakfall lobby: startGame failed: boom')
+    } finally {
+      failure.mockRestore()
+      log.mockRestore()
+    }
+    expect(await emit(connect(), 'peekRoom', { roomCode: 'none' })).toEqual({ error: 'No room with that code' })
+  })
+
+  test('junk game actions during a real game are ignored, and the game goes on', async () => {
+    const host = connect()
+    const joiner = connect()
+    const pushes: object[] = []
+    joiner.on('gameUpdate', body => pushes.push(body))
+    const state = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Lobby' })
+    await emit(joiner, 'joinRoom', { roomCode: state.roomCode, name: 'Bo' })
+    expect(await emit(host, 'startGame', { hints: 'on' })).toEqual({ started: true })
+    for (const payload of [null, undefined, 5, [], { itemId: null }, { itemId: 'x', eventType: 'click' }, { itemId: 1, eventType: {} },
+      { itemId: 1, eventType: 'click', targetState: JSON.parse('{"__proto__": {"x": 1}, "dispatchEvent": 1}') }]) {
+      joiner.emit('gameAction', payload)
+      host.emit('gameAction', payload)
+    }
+    await new Promise(resolve => setTimeout(resolve, 200))
+    expect(pushes.length).toBeGreaterThan(0)
+    expect(await emit(connect(), 'peekRoom', { roomCode: state.roomCode })).toEqual({ roomName: 'Lobby', hostName: 'Ann' })
   })
 
   test('names are cleaned and limited', async () => {

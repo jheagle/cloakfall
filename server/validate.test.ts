@@ -22,6 +22,16 @@ describe('cleanName', () => {
     [undefined, null, 5, {}, ['Ann'], '', '   ', '\u0000'].forEach(value => expect(clean(value)).toEqual({ error: 'missing' }))
   })
 
+  test('drops zero-width, bidi and other invisible characters, so a name cannot look blank or reorder itself', () => {
+    expect(clean('\u200b\u200c\u200e\u200f\ufeff')).toEqual({ error: 'missing' })
+    expect(clean('Ann\u202eeL')).toEqual({ name: 'AnneL' })
+    expect(clean('\u2066Bo\u2069\u00ad')).toEqual({ name: 'Bo' })
+  })
+
+  test('keeps the zero-width joiner, which emoji sequences need', () => {
+    expect(clean('\u{1F468}\u200d\u{1F469}')).toEqual({ name: '\u{1F468}\u200d\u{1F469}' })
+  })
+
   test('too long after cleaning', () => {
     expect(clean('a'.repeat(10))).toEqual({ name: 'a'.repeat(10) })
     expect(clean('a'.repeat(11))).toEqual({ error: 'too long' })
