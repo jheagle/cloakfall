@@ -59,6 +59,49 @@ describe('isRoomGameOver', () => {
   })
 })
 
+describe('payloads from clients are never trusted', () => {
+  const junk = [undefined, null, 5, 'x', [], { name: 5 }, { name: {}, roomName: [] }, { roomCode: {}, name: 'Bo' },
+    { hints: 'loud', robots: 'all' }, { hints: 'on', robots: 1.5 }, { hints: 'on', robots: NaN }, { itemId: null }]
+  const events = ['createRoom', 'peekRoom', 'joinRoom', 'startGame', 'gameAction']
+
+  test('junk sent to every event, with and without a callback, never stops the server', async () => {
+    const attacker = connect()
+    await new Promise(resolve => attacker.on('connect', resolve))
+    for (const event of events) {
+      for (const payload of junk) {
+        attacker.emit(event, payload)
+        attacker.emit(event)
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 200))
+    const answers = await Promise.all(events.filter(event => event !== 'gameAction').flatMap(event => junk.map(payload => emit<{ error?: string }>(attacker, event, payload as object))))
+    expect(answers.every(answer => typeof answer.error === 'string')).toBe(true)
+    // Still serving: a real room works afterwards, from a fresh connection.
+    const host = connect()
+    const state = await emit<RoomState>(host, 'createRoom', { name: 'Alice', roomName: 'Still here' })
+    expect(state.roomName).toBe('Still here')
+  })
+
+  test('names are cleaned and limited', async () => {
+    const host = connect()
+    expect(await emit(host, 'createRoom', { name: 'a'.repeat(25), roomName: 'Lobby' })).toEqual({ error: 'Names can be up to 24 characters' })
+    expect(await emit(host, 'createRoom', { name: 'Ann', roomName: 'b'.repeat(41) })).toEqual({ error: 'Lobby names can be up to 40 characters' })
+    const state = await emit<RoomState>(host, 'createRoom', { name: '  Ann\u0000  Lee ', roomName: ' My   lobby ' })
+    expect(state.roomName).toBe('My lobby')
+    expect(state.players[0].name).toBe('Ann Lee')
+  })
+
+  test('startGame refuses an unknown hint setting or a robot count that is not a whole number', async () => {
+    const host = connect()
+    const state = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Lobby' })
+    await emit(connect(), 'joinRoom', { roomCode: state.roomCode, name: 'Bo' })
+    expect(await emit(host, 'startGame', { hints: 'loud' })).toEqual({ error: 'Unknown hint setting' })
+    expect(await emit(host, 'startGame', { hints: 'on', robots: 'all' })).toEqual({ error: 'The number of robots must be a whole number' })
+    expect(await emit(host, 'startGame', { hints: 'on', robots: 1.5 })).toEqual({ error: 'The number of robots must be a whole number' })
+    expect(await emit(host, 'startGame', { hints: 'on' })).toEqual({ started: true })
+  })
+})
+
 describe('GET /status', () => {
   test('says the lobby is up, with counts only (no names or room codes)', async () => {
     const response = await fetch(`${baseUrl}/status`)

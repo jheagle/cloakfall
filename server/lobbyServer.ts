@@ -4,6 +4,7 @@ import treeloom from 'treeloom'
 import { Server, Socket } from 'socket.io'
 import { startRoomGame, watchRoomGame } from './gameplay'
 import { forTransport } from './transport'
+import { cleanGameAction, cleanName, isHintSetting, isRecord, MAX_LOBBY_NAME, MAX_PLAYER_NAME } from './validate'
 import { isHostOnlyStage, isRemoteSessionActive, remotePlacementStage } from '../src/setup/remotePlacement'
 import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'http'
 import type { DomItem } from 'treeloom/dist/domItem/types'
@@ -115,6 +116,33 @@ const httpHandler = (status: () => LobbyStatus) => (request: IncomingMessage, re
   response.end('Not found')
 }
 
+/** How a lobby event answers its sender (socket.io's acknowledgement callback). */
+type Ack = (answer: object) => void
+
+/**
+ * Listen for a client event without trusting what arrives: a payload that isn't an object is treated as an empty
+ * one, a missing acknowledgement callback becomes a no-op, and anything the handler throws is logged and answered
+ * with an error. Without this, one hand-built message (no callback, a null payload, a number where a name goes)
+ * threw out of the handler and ended the whole Node process, for every room.
+ * @param socket
+ * @param event
+ * @param handler
+ */
+const on = (socket: Socket, event: string, handler: (payload: Record<string, unknown>, ack: Ack) => void): void => {
+  socket.on(event, (payload: unknown, ack: unknown) => {
+    const reply: Ack = typeof ack === 'function' ? ack as Ack : () => {}
+    try {
+      handler(isRecord(payload) ? payload : {}, reply)
+    } catch (error) {
+      console.error(`cloakfall lobby: ${event} failed: ${(error as Error)?.message ?? error}`)
+      reply({ error: 'Something went wrong, please try again' })
+    }
+  })
+}
+
+/** The answer for a name that is missing or too long. */
+const NAME_ERRORS = ['A name is required', `Names can be up to ${MAX_PLAYER_NAME} characters`] as const
+
 /**
  * The remote lobby: players create or join a room by a short code, and see who else is in it as they join or
  * leave. This is hosting, joining and presence only - nothing about actual gameplay is wired up here.
@@ -141,17 +169,19 @@ export const createLobbyServer = (): HttpServer => {
   io.on('connection', (socket: Socket) => {
     let currentRoom: string | null = null
 
-    socket.on('createRoom', ({ name, roomName }: { name: string, roomName: string }, ack: (state: RoomState | { error: string }) => void) => {
-      if (!name?.trim()) {
-        ack({ error: 'A name is required' })
+    on(socket, 'createRoom', (payload, ack) => {
+      const name = cleanName(payload.name, MAX_PLAYER_NAME, ...NAME_ERRORS)
+      if ('error' in name) {
+        ack(name)
         return
       }
-      if (!roomName?.trim()) {
-        ack({ error: 'A lobby name is required' })
+      const roomName = cleanName(payload.roomName, MAX_LOBBY_NAME, 'A lobby name is required', `Lobby names can be up to ${MAX_LOBBY_NAME} characters`)
+      if ('error' in roomName) {
+        ack(roomName)
         return
       }
       const roomCode = generateRoomCode(rooms)
-      rooms.set(roomCode, { roomName: roomName.trim(), hostId: socket.id, players: new Map([[socket.id, name.trim()]]) })
+      rooms.set(roomCode, { roomName: roomName.name, hostId: socket.id, players: new Map([[socket.id, name.name]]) })
       currentRoom = roomCode
       socket.join(roomCode)
       ack(roomState(rooms, roomCode))
@@ -159,8 +189,8 @@ export const createLobbyServer = (): HttpServer => {
 
     // A read-only lookup, callable before the caller has even entered their own name or joined anything - lets
     // a joiner see whose lobby it is (see mainMenu.ts's remote-join-confirm) before they commit to anything.
-    socket.on('peekRoom', ({ roomCode }: { roomCode: string }, ack: (info: { roomName: string, hostName: string } | { error: string }) => void) => {
-      const room = rooms.get(roomCode)
+    on(socket, 'peekRoom', ({ roomCode }, ack) => {
+      const room = typeof roomCode === 'string' ? rooms.get(roomCode) : undefined
       if (!room) {
         ack({ error: 'No room with that code' })
         return
@@ -168,11 +198,13 @@ export const createLobbyServer = (): HttpServer => {
       ack({ roomName: room.roomName, hostName: room.players.get(room.hostId) as string })
     })
 
-    socket.on('joinRoom', ({ roomCode, name }: { roomCode: string, name: string }, ack: (state: RoomState | { error: string }) => void) => {
-      if (!name?.trim()) {
-        ack({ error: 'A name is required' })
+    on(socket, 'joinRoom', (payload, ack) => {
+      const name = cleanName(payload.name, MAX_PLAYER_NAME, ...NAME_ERRORS)
+      if ('error' in name) {
+        ack(name)
         return
       }
+      const roomCode = typeof payload.roomCode === 'string' ? payload.roomCode : ''
       const room = rooms.get(roomCode)
       if (!room) {
         ack({ error: 'No room with that code' })
@@ -182,7 +214,7 @@ export const createLobbyServer = (): HttpServer => {
         ack({ error: 'That room is full' })
         return
       }
-      room.players.set(socket.id, name.trim())
+      room.players.set(socket.id, name.name)
       currentRoom = roomCode
       socket.join(roomCode)
       const state = roomState(rooms, roomCode)
@@ -190,7 +222,15 @@ export const createLobbyServer = (): HttpServer => {
       socket.to(roomCode).emit('roomUpdate', state)
     })
 
-    socket.on('startGame', ({ hints, robots = 0 }: { hints: HintSetting, robots?: number }, ack: (result: { started: true } | { error: string }) => void) => {
+    on(socket, 'startGame', ({ hints, robots = 0 }, ack) => {
+      if (!isHintSetting(hints)) {
+        ack({ error: 'Unknown hint setting' })
+        return
+      }
+      if (!Number.isInteger(robots)) {
+        ack({ error: 'The number of robots must be a whole number' })
+        return
+      }
       const room = currentRoom ? rooms.get(currentRoom) : undefined
       if (!room) {
         ack({ error: 'No room to start a game in' })
@@ -210,21 +250,22 @@ export const createLobbyServer = (): HttpServer => {
       }
       // Robots only ever fill the seats this room's own human players haven't - never grow the room past
       // MAX_PLAYERS in total.
-      if (robots < 0 || robots > MAX_PLAYERS - room.players.size) {
+      if ((robots as number) < 0 || (robots as number) > MAX_PLAYERS - room.players.size) {
         ack({ error: `Robots can only fill the ${MAX_PLAYERS - room.players.size} remaining seat(s)` })
         return
       }
       // room.broadcastGame does not exist yet at this exact line - startRoomGame's own placement timer will not
       // fire for a good two minutes, long after the very next line assigns it, so the closure below still reads
       // the real function by the time it's ever actually called.
-      room.game = startRoomGame([...room.players.entries()], hints, () => room.broadcastGame?.(), robots)
+      room.game = startRoomGame([...room.players.entries()], hints, () => room.broadcastGame?.(), robots as number)
       room.broadcastGame = watchRoomGame(room.game, (socketId, redactedBody) => io.to(socketId).emit('gameUpdate', forTransport(redactedBody)))
       ack({ started: true })
     })
 
-    socket.on('gameAction', (envelope: ForwardedEvent) => {
+    on(socket, 'gameAction', payload => {
+      const envelope = cleanGameAction(payload)
       const room = currentRoom ? rooms.get(currentRoom) : undefined
-      if (!room?.game) {
+      if (!envelope || !room?.game) {
         return
       }
       // Choosing the turn order (Random, or Set order's own board clicks) is host-only - enforced here, not just
