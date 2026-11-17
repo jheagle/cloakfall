@@ -11,7 +11,16 @@
  */
 
 /** Wider than this, every board is shown (side by side); narrower, one opponent at a time. */
+import createControlPanel from './controlPanel'
+
 export const ONE_BOARD_MAX_WIDTH_PX = 759
+
+/**
+ * The event the bar sends on <main> when the viewer's own board opens or closes (detail: { open }): on a phone, its
+ * drawer; on a wide screen, where it is docked and always in view, open whenever there is one. Local multiplayer
+ * listens (setup/ownBoardReveal.ts).
+ */
+export const OWN_BOARD_EVENT = 'cloakfall:own-board'
 
 /** One player, as read from the rendered page. */
 export interface BarPlayer {
@@ -292,6 +301,24 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
   let players: BarPlayer[] = []
   let drawerOpen = false
   let ownId: string | null = null
+  // What the game was last told about the viewer's own board (ownBoardReveal.ts), so it is told only of changes
+  let toldOpen: boolean | null = null
+  const menu = createControlPanel(main)
+  nav.prepend(menu.panel)
+  nav.append(menu.button)
+
+  /**
+   * Tell the game whether the viewer's own board is open: the drawer on a phone; docked on a wide screen, so open
+   * whenever there is one. Local multiplayer shows that player's ships only while it is (ownBoardReveal.ts).
+   */
+  const tellOwnBoard = (): void => {
+    const open = playing && ownId !== null && (narrow?.matches ? drawerOpen : true)
+    if (open === toldOpen) {
+      return
+    }
+    toldOpen = open
+    main.dispatchEvent(new CustomEvent(OWN_BOARD_EVENT, { detail: { open } }))
+  }
 
   /** Open or close the own board's drawer (a no-op when it is already that way). */
   const setDrawer = (open: boolean): void => {
@@ -311,14 +338,18 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
     const ownNow = players.find(player => player.own)?.id ?? null
     if (!playing || ownNow !== ownId) {
       setDrawer(false)
+      // A new own board (local multiplayer: the next player) is told about afresh
+      toldOpen = null
     }
     ownId = ownNow
+    tellOwnBoard()
     // Wide screens dock the viewer's own board in a column of its own, apart from the opponents' boards
     // (layouts-custom.sass); robots-only has no own board, so the opponents keep the whole width
     doc.body.classList.toggle('has-own-board', playing && ownNow !== null)
     if (!playing) {
       state = initialBarState()
       rendered = ''
+      menu.setOpen(false)
       nav.hidden = true
       doc.body.classList.remove('has-player-bar')
       style.textContent = ''
@@ -335,6 +366,9 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
     if (key !== rendered) {
       rendered = key
       renderBar(list, players, shown, ownOpen, { choose, toggleOwn })
+    }
+    if (menu.isOpen()) {
+      menu.sync()
     }
     nav.hidden = false
     doc.body.classList.add('has-player-bar')
@@ -357,23 +391,38 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
     main.querySelector(':scope > .boards > .role-own')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
   }
 
+  // Escape closes the menu first (it sits on top), then the drawer, and puts focus back on what opened it
   const onKey = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape' && drawerOpen) {
+    if (event.key !== 'Escape') {
+      return
+    }
+    if (menu.isOpen()) {
+      menu.setOpen(false)
+      menu.button.focus()
+    } else if (drawerOpen) {
       setDrawer(false)
       nav.querySelector<HTMLElement>('.is-own')?.focus()
     }
   }
-  // In the capture phase, before any listener in the game (a shot) sees the tap. The bar is left alone: its own
-  // entry toggles the drawer, and the others switch boards behind it.
+  // In the capture phase, before any listener in the game (a shot) sees the tap: a tap outside the open menu or
+  // drawer only closes it. The bar is left alone (the menu is part of it; its own entry toggles the drawer, and the
+  // others switch boards behind it), and so is the inside of an open drawer while the menu is closed.
   const onOutsideTap = (event: Event): void => {
     const target = event.target as Node | null
+    if (!target || nav.contains(target) || (!drawerOpen && !menu.isOpen())) {
+      return
+    }
     const ownBoard = main.querySelector(':scope > .boards > .role-own')
-    if (!drawerOpen || !target || nav.contains(target) || ownBoard?.contains(target)) {
+    const inDrawer = drawerOpen && Boolean(ownBoard?.contains(target))
+    if (inDrawer && !menu.isOpen()) {
       return
     }
     event.preventDefault()
     event.stopPropagation()
-    setDrawer(false)
+    menu.setOpen(false)
+    if (!inDrawer) {
+      setDrawer(false)
+    }
   }
   // Growing past phone width: the board is back on the page, so the drawer state no longer applies
   const onWidth = (): void => {

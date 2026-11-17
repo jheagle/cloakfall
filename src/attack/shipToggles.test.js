@@ -20,28 +20,26 @@ describe('showing ships during play', () => {
     input.dispatchEvent(new Event('change'))
   }
 
-  test('one-player game: ships are hidden by default, and the own-ships checkbox shows only the human\'s own', async () => {
+  test('one-player game: the human\'s own ships always show, the robots\' never do, and there is no checkbox', async () => {
     const { players: [human, robot] } = startGame({ humans: 1, robots: 1 })
     await settle()
-    expect(shipElements(human).some(shaded)).toBe(false)
-    toggle('.own-ships', true)
     expect(human.showShips).toBe(true)
     expect(shipElements(human).every(shaded)).toBe(true)
     expect(shipElements(robot).some(shaded)).toBe(false)
-    toggle('.own-ships', false)
-    expect(shipElements(human).some(shaded)).toBe(false)
+    expect(document.querySelector('.own-ships')).toBeNull()
   })
 
   test('a ship which has been hit keeps its colour when the ships are shown or hidden', async () => {
-    const { players: [human] } = startGame({ humans: 1, robots: 1 })
+    const { players } = startGame({ humans: 0, robots: 2 })
     await settle()
-    const part = human.shipFleet[0].parts[0]
-    treeloomMatrix.getDomItemFromPoint(part.point, human.board).isHit = true
-    treeloomMatrix.getDomItemFromPoint(part.point, human.board).element.style.backgroundColor = 'red'
-    toggle('.own-ships', true)
-    expect(treeloomMatrix.getDomItemFromPoint(part.point, human.board).element.style.backgroundColor).toBe('red')
-    toggle('.own-ships', false)
-    expect(treeloomMatrix.getDomItemFromPoint(part.point, human.board).element.style.backgroundColor).toBe('red')
+    const robot = players[0]
+    const part = robot.shipFleet[0].parts[0]
+    treeloomMatrix.getDomItemFromPoint(part.point, robot.board).isHit = true
+    treeloomMatrix.getDomItemFromPoint(part.point, robot.board).element.style.backgroundColor = 'red'
+    toggle('.all-ships', true)
+    expect(treeloomMatrix.getDomItemFromPoint(part.point, robot.board).element.style.backgroundColor).toBe('red')
+    toggle('.all-ships', false)
+    expect(treeloomMatrix.getDomItemFromPoint(part.point, robot.board).element.style.backgroundColor).toBe('red')
   })
 
   test('multiplayer has no own-ships checkbox', async () => {

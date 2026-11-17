@@ -1,4 +1,4 @@
-import { getGameMode, getHintSetting } from '../../setup/gameOptions'
+import { getHintSetting } from '../../setup/gameOptions'
 import type { DomItem, DomItemConfig } from 'treeloom/dist/domItem/types'
 import type { Player } from '../../types'
 import { htmlEscape } from 'si-funciona'
@@ -44,32 +44,8 @@ const playerStats = (player: Player, status: string = '', item: DomItem = player
           }
         ]
       }]
-  const ownShipsControl = player.isRobot || getGameMode(item) !== 'solo'
-    ? []
-    : [{
-        nodeName: 'label',
-        attributes: { className: 'stats-control' },
-        children: [
-          {
-            nodeName: 'input',
-            attributes: {
-              className: 'own-ships',
-              type: 'checkbox',
-              checked: Boolean(player.showShips)
-            },
-            eventListeners: {
-              change: [{ listenerFunc: 'shipsListener', listenerArgs: {}, listenerOptions: false }]
-            }
-          },
-          {
-            nodeName: 'span',
-            attributes: {
-              innerHTML: ' Show my ships'
-            }
-          }
-        ]
-      }]
-  const controls = [...hintControl, ...ownShipsControl]
+  // Single player's "Show my ships" went away (2026-11-17): the human's own ships always show (startNewGame.ts)
+  const controls = [...hintControl]
   return {
     nodeName: 'div',
     attributes: {
