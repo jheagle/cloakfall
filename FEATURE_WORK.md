@@ -58,7 +58,7 @@ slices need a human visual review: screenshots at phone and desktop widths in ev
   turn marker; tapping an opponent shows their board in the main area (the attacker's current choice is kept per
   viewer; the first target is the next one alive). Wide screens: all targets side by side, the bar still shows
   stats. Replaces the per-board stats lists on the phone. Skill: ui/css + logic. (notes [3][6])
-- [ ] **4b. Own-board drawer.** Your own board (and your fleet list) slides in from the side or bottom and out
+- [x] **4b. Own-board drawer.** (#187) Your own board (and your fleet list) slides in from the side or bottom and out
   again; closed by default on a phone; on wide screens docked in a column of its own, apart from the opponents. Local multiplayer: closed at the start of every turn
   (players never see each other's placement by accident). Skill: ui/css. (notes [3][6])
 - [ ] **3. Highlight only the current attacker; drop the coloured board borders.** Removes the robots'
