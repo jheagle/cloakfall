@@ -20,7 +20,16 @@ import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
  * @param target
  */
 const remoteLeaveListener = (e: Event, target: DomItem): void => {
-  const root = treeloom.getTopParentItem(target) as DomItemRoot
+  leaveOnlineGame(treeloom.getTopParentItem(target) as DomItemRoot)
+}
+
+/**
+ * Leave the online game this page is in and go back to the main menu (see remoteLeaveListener). Also the game menu's
+ * Leave game (setup/gameActions.ts), mid-game included: the server takes a player who disconnects out of the room
+ * (their turns then time out to random shots), and closes the room for everyone when the host does.
+ * @param root
+ */
+export const leaveOnlineGame = (root: DomItemRoot): void => {
   leaveRemoteGame(root)
   disconnectLobbySocket()
   history.replaceState(null, '', location.pathname)

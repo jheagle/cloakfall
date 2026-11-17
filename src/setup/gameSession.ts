@@ -16,6 +16,9 @@ export interface GameSession {
   settings: GameSettings
   attackLock: { isLocked: boolean }
   queue: (fn: Function, time?: number, ...args: any[]) => Promise<any>
+  /** Which game on this root the queue is running steps for: stopGame bumps it, and a step queued for an earlier one
+   * is skipped when its turn comes (see queue.ts), so a game that was quit or restarted can't keep playing. */
+  generation: number
   placement: PlacementSession | null
   /** Overrides how endGame.ts shows the final score, for a remote room's game - see gameplay.ts's startRoomGame.
    * null (the default) keeps local hot-seat's own finalScore screen and its Play Again/Change Settings/Main Menu
@@ -36,6 +39,7 @@ const defaultSession = (): GameSession => ({
   settings: { humans: 0, robots: 2, firstGoesFirst: true },
   attackLock: { isLocked: false },
   queue: siFunciona.queueTimeout(),
+  generation: 0,
   placement: null,
   onGameOver: null,
   onAttackerChanged: null
@@ -53,4 +57,17 @@ export const getSession = (item: DomItem): GameSession => {
     sessions.set(root, defaultSession())
   }
   return sessions.get(root) as GameSession
+}
+
+/**
+ * Stop the game running on this root, mid-game included: every step already queued for it (a robot's next shot, a
+ * turn change) is skipped instead of run, any placement in progress is dropped, and the attack lock is released. The
+ * root keeps its settings, so a new game can start on it (startNewGame calls this first).
+ * @param item the root, or anything in its tree
+ */
+export const stopGame = (item: DomItem): void => {
+  const session = getSession(item)
+  session.generation++
+  session.placement = null
+  session.attackLock.isLocked = false
 }

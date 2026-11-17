@@ -401,3 +401,42 @@ body.has-player-bar main.game .player-controls, body.has-player-bar main.game > 
     margin: 0
     font-size: 1.4rem
     color: #9aa4bd
+
+// The menu's "Game" section (src/view/controlPanel.ts): one full-width button per action, and the question asked
+// before one happens
+.player-bar .player-bar-panel
+  h2 + .player-bar-controls + h2
+    margin-top: 1.4rem
+
+  .player-bar-actions
+    display: flex
+    flex-direction: column
+    gap: .6rem
+
+    &[hidden]
+      display: none
+
+  .player-bar-action
+    min-height: 4.4rem
+    padding: .6rem 1.2rem
+    border: .2rem solid #3a4770
+    border-radius: .6rem
+    background-color: #1c2747
+    color: #e8ecf8
+    font: inherit
+    font-size: 1.6rem
+    text-align: left
+    cursor: pointer
+
+    &:hover, &:focus-visible
+      border-color: #ff8a3d
+
+    &.is-confirm
+      border-color: #ff8a3d
+      background-color: #ff8a3d
+      color: #10172c
+      font-weight: 700
+
+  .player-bar-confirm
+    margin: 0 0 .4rem
+    font-size: 1.5rem
