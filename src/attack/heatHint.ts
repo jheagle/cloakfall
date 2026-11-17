@@ -1,7 +1,7 @@
 import treeloom from 'treeloom'
 import treeloomMatrix from 'treeloom-matrix'
 import { densityChoices } from '../robot/densityTargets'
-import { paint, shade } from '../robot/resetTargets'
+import { paint, shade } from '../robot/heatCell'
 import type { Player } from '../types'
 
 /**

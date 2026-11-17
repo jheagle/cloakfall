@@ -159,6 +159,37 @@ describe('redacting the game state for a remote viewer', () => {
     expect(otherStats.children.some(child => child.attributes?.className === 'player-name')).toBe(true)
   })
 
+  describe('the sensor scan\'s shading', () => {
+    const shaded = 'rgba(255, 215, 0, 0.5)'
+    const borderAt = (board, x, y) => treeloomMatrix.getDomItemFromPoint(treeloomMatrix.point(x, y, 0), board).attributes.style?.borderColor
+    const shade = (board, x, y) => {
+      const tile = treeloomMatrix.getDomItemFromPoint(treeloomMatrix.point(x, y, 0), board)
+      tile.attributes.style = { ...tile.attributes.style, borderColor: shaded }
+    }
+
+    test('stays for the attacker who switched it on', async () => {
+      const [attacker, victim] = await setUp()
+      attacker.attacker = true
+      attacker.showHint = true
+      shade(victim.board, 3, 3)
+      expect(borderAt(redactPlayer(victim, attacker).board, 3, 3)).toBe(shaded)
+    })
+
+    test('is taken off for every other viewer (the victim, other players, the attacker with it off)', async () => {
+      const [attacker, victim] = await setUp()
+      attacker.attacker = true
+      attacker.showHint = true
+      shade(victim.board, 3, 3)
+      // the victim, on their own board
+      expect(borderAt(redactPlayer(victim, victim).board, 3, 3)).toBeUndefined()
+      // the same attacker, once the scan is off
+      attacker.showHint = false
+      expect(borderAt(redactPlayer(victim, attacker).board, 3, 3)).toBeUndefined()
+      // the real board keeps it (only the clone sent to a viewer changes)
+      expect(borderAt(victim.board, 3, 3)).toBe(shaded)
+    })
+  })
+
   describe('redactGameBody and the final-score screen\'s own Play Again button', () => {
     // A stand-in for a game-over push's own body - not a real rendered root, but redactGameBody now also reads
     // remotePlacementStage(body), which walks parentItem up to the root (see remotePlacement.ts) - parentItem:

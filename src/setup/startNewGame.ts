@@ -7,7 +7,10 @@ import updatePlayer from '../attack/updatePlayer'
 import { applyLocalPlayerView } from '../attack/localPlayerView'
 import { startPlacement } from './placement'
 import { getGameMode, setHintSetting } from './gameOptions'
+import { stopGame } from './gameSession'
 import showShipsControl from '../components/layout/showShipsControl'
+import shadeShips from '../cells/shadeShips'
+import { listenForOwnBoard } from './ownBoardReveal'
 import type { GameMode, HintSetting } from './gameOptions'
 import type { DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { Player } from '../types'
@@ -36,6 +39,14 @@ const clearBody = (parent: DomItemRoot): void => {
 const applyInitialLocalView = (players: Player[], mode: GameMode): void => {
   if (mode === 'robots') {
     applyLocalPlayerView(players, null)
+  }
+  // Single player: the human's own ships always show (their board is theirs alone: a drawer on a phone, docked
+  // apart on a wide screen); placement hid them while the boards were swapped
+  if (mode === 'solo') {
+    players.filter(player => !player.isRobot).forEach(player => {
+      player.showShips = true
+      shadeShips(player, true)
+    })
   }
 }
 
@@ -75,8 +86,12 @@ export const startNewGame = (
   placementStarter: typeof startPlacement = startPlacement,
   onPlayersBuilt: (players: Player[]) => void = () => {}
 ): void => {
+  // Whatever was still queued for the last game on this root (a restart mid-game) never runs in this one
+  stopGame(parent)
   setHintSetting(parent, hints)
   clearBody(parent)
+  // Local multiplayer: a player's ships show while they have their own board open on their turn (ownBoardReveal.ts)
+  listenForOwnBoard(parent)
   // Robots only: one control above the boards shows every ship at once
   if (getGameMode(parent) === 'robots') {
     treeloom.renderHtml(treeloom.createDomItem(showShipsControl()), parent.body)

@@ -10,7 +10,7 @@ import shipsListener from '../src/attack/shipsListener'
 import { startNewGame } from '../src/setup/startNewGame'
 import { cancelRemotePlacement, startRemotePlacement } from '../src/setup/remotePlacement'
 import { setGameMode } from '../src/setup/gameOptions'
-import { getSession } from '../src/setup/gameSession'
+import { getSession, stopGame } from '../src/setup/gameSession'
 import { redactGameBody } from '../src/network/redactGameState'
 import remoteFinalScore from '../src/components/layout/remoteFinalScore'
 import updatePlayerStats from '../src/attack/updatePlayerStats'
@@ -163,6 +163,8 @@ export const startRoomGame = (roomPlayers: Array<[socketId: string, name: string
     cancelRemotePlacement(root)
     // A turn that starts after this (a robot's queued step finishing) must not arm a new deadline either.
     getSession(root).onAttackerChanged = () => {}
+    // And the steps already queued (a robot's next shot, a turn change) are skipped, so the game stops playing
+    stopGame(root)
   }
   return { root, players, playerBySocket, stop }
 }

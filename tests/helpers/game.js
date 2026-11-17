@@ -93,7 +93,9 @@ export const attacker = players => players.find(player => player.attacker)
 export const victims = players => players.filter(player => !player.attacker)
 
 /** Click a cell like a player would and let the turn change finish. */
-export const click = async (cell, ms = 1000) => {
+// Long enough for the turn to pass afterwards, local multiplayer's pause after a shot included (updateScore's
+// HIT_PAUSE_MS, then the turn change's own queued steps). Fake timers: no real time passes.
+export const click = async (cell, ms = 2000) => {
   cell.element.click()
   await settle(ms)
 }

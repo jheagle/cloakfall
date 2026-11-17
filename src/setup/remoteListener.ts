@@ -1,8 +1,9 @@
 import treeloom from 'treeloom'
-import { connectLobbySocket, createRoom, joinRoom, peekRoom, onRoomUpdate, onRoomClosed, disconnectLobbySocket, getSocketId, startGame } from '../network/lobbySocket'
-import { enterRemoteGame } from '../network/remoteGame'
+import { connectLobbySocket, createRoom, joinRoom, peekRoom, onBackToLobby, onRoomUpdate, onRoomClosed, disconnectLobbySocket, getSocketId, startGame } from '../network/lobbySocket'
+import { enterRemoteGame, leaveRemoteGame } from '../network/remoteGame'
+import startMenu from './startMenu'
 import { show, update } from './showLobby'
-import type { DomItem } from 'treeloom/dist/domItem/types'
+import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { HintSetting } from './gameOptions'
 import type { RoomState } from '../../server/lobbyServer'
 import { htmlEscape } from 'si-funciona'
@@ -114,10 +115,25 @@ const leaveToPresets = (menu: DomItem, message: string = ''): void => {
  * remotePlayAgainListener.ts), watch it for changes and show the waiting room. Puts the room's own code in
  * the address bar too, so the host (or anyone else) can just copy the current URL to share a join link - see
  * showRemoteEntry, which reads it back out on the receiving end. */
+/**
+ * Leave the game on screen and show the room's waiting room again: the host ended the game for everyone, or restarted
+ * it (the new game's first push then arrives here, as for any game). The same steps as Play Again after a game
+ * (remotePlayAgainListener.ts).
+ * @param root
+ * @param state
+ */
+const returnToWaitingRoom = (root: DomItem, state: RoomState): void => {
+  leaveRemoteGame(root as DomItemRoot)
+  const menu = treeloom.getChildrenByClass('main-menu', startMenu(root as DomItemRoot).body)[0]
+  enterWaitingRoom(menu, state)
+}
+
 export const enterWaitingRoom = (menu: DomItem, state: RoomState): void => {
   history.replaceState(null, '', `${location.pathname}?room=${state.roomCode}`)
   onRoomUpdate(newState => renderRoomState(menu, newState))
   onRoomClosed(() => leaveToPresets(menu, 'The host left - room closed.'))
+  // The host ended (or restarted) the game from their game menu: back here, ready for the next game's first push
+  onBackToLobby(newState => returnToWaitingRoom(treeloom.getTopParentItem(menu), newState))
   // Every player registers this the moment they enter the waiting room, host included - whichever one of them
   // starts the game, everyone (including whoever started it) gets this same first gameUpdate push, so everyone
   // enters the rendered game the same way instead of only the one who clicked Start.

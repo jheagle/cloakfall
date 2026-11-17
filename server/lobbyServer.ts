@@ -56,6 +56,8 @@ interface Room {
   players: Map<string, string>
   game?: RoomGame
   broadcastGame?: () => void
+  /** What the host last started a game with, so a restart (hostGameAction) can start the same again. */
+  lastStart?: { hints: HintSetting, robots: number }
   /** When anyone in the room last sent anything, or its game last pushed an update (Date.now()). */
   lastActivity: number
 }
@@ -206,6 +208,31 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
    * Close a room for everyone in it: stop its game (so no timer keeps playing it) and forget it.
    * @param roomCode
    */
+  /**
+   * Start a game in a room (startGame, and a host's restart): its players become the human players, in join order,
+   * and `robots` fill seats. Its pushes go to each player's own socket, and only while it is still the room's game:
+   * a game that was stopped (closed room, host's restart or return to lobby) never pushes again, even if a step it had
+   * already queued finishes after.
+   * @param room
+   * @param hints
+   * @param robots
+   */
+  const beginGame = (room: Room, hints: HintSetting, robots: number): void => {
+    room.lastStart = { hints, robots }
+    // room.broadcastGame does not exist yet at this exact line - startRoomGame's own placement timer will not
+    // fire for a good two minutes, long after the next line assigns it, so the closure below still reads
+    // the real function by the time it's ever actually called.
+    const game = startRoomGame([...room.players.entries()], hints, () => room.broadcastGame?.(), robots)
+    room.game = game
+    room.broadcastGame = watchRoomGame(game, (socketId, redactedBody) => {
+      if (room.game !== game) {
+        return
+      }
+      room.lastActivity = Date.now()
+      io.to(socketId).emit('gameUpdate', forTransport(redactedBody))
+    })
+  }
+
   const closeRoom = (roomCode: string): void => {
     const room = rooms.get(roomCode)
     if (!room) {
@@ -398,15 +425,46 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
         ack({ error: `Robots can only fill the ${MAX_PLAYERS - room.players.size} remaining seat(s)` })
         return
       }
-      // room.broadcastGame does not exist yet at this exact line - startRoomGame's own placement timer will not
-      // fire for a good two minutes, long after the very next line assigns it, so the closure below still reads
-      // the real function by the time it's ever actually called.
-      room.game = startRoomGame([...room.players.entries()], hints, () => room.broadcastGame?.(), robots as number)
-      room.broadcastGame = watchRoomGame(room.game, (socketId, redactedBody) => {
-        room.lastActivity = Date.now()
-        io.to(socketId).emit('gameUpdate', forTransport(redactedBody))
-      })
+      beginGame(room, hints, robots as number)
       ack({ started: true })
+    })
+
+    // The host's game menu, mid-game: end the game for everyone and go back to the waiting room ('lobby'), or end it
+    // and start a new one with the same settings at once ('restart'). Everyone is sent backToLobby with the room's
+    // state first (the client goes back to the waiting room, which listens for the next game's first push).
+    on(socket, 'hostGameAction', (payload, ack) => {
+      const action = isRecord(payload) ? payload.action : undefined
+      if (action !== 'restart' && action !== 'lobby') {
+        ack({ error: 'Unknown game action' })
+        return
+      }
+      const room = currentRoom ? rooms.get(currentRoom) : undefined
+      if (!room || !currentRoom) {
+        ack({ error: 'No room' })
+        return
+      }
+      if (socket.id !== room.hostId) {
+        ack({ error: 'Only the host can do that' })
+        return
+      }
+      if (!room.game) {
+        ack({ error: 'No game to end' })
+        return
+      }
+      if (action === 'restart' && room.players.size < MIN_PLAYERS_TO_START) {
+        ack({ error: `Need at least ${MIN_PLAYERS_TO_START} players to start` })
+        return
+      }
+      room.game.stop()
+      room.game = undefined
+      room.broadcastGame = undefined
+      io.to(currentRoom).emit('backToLobby', roomState(rooms, currentRoom))
+      if (action === 'restart') {
+        const last = room.lastStart ?? { hints: 'optional' as HintSetting, robots: 0 }
+        // Robots fill the seats the humans don't; fewer seats if someone joined since (never past MAX_PLAYERS)
+        beginGame(room, last.hints, Math.min(last.robots, MAX_PLAYERS - room.players.size))
+      }
+      ack({ ok: true })
     })
 
     on(socket, 'gameAction', payload => {

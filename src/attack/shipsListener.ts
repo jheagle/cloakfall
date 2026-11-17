@@ -4,8 +4,8 @@ import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { Player } from '../types'
 
 /**
- * The ship toggles. A player's own checkbox (one-player game) shows or hides their ships. The all-ships control
- * (robots-only game) does the same for every board at once.
+ * The robots-only game's "Show all ships" control: shows or hides the ships on every board at once. (Single player's
+ * own "Show my ships" checkbox is gone: the human's own ships always show.)
  * @param e
  * @param target
  */
@@ -15,9 +15,7 @@ const shipsListener = (e: Event, target: DomItem): void => {
     player.showShips = input.checked
     shadeShips(player, input.checked)
   }
-  if (input.className.includes('own-ships')) {
-    set(treeloom.getParentsByClass('player', target)[0] as unknown as Player)
-  } else if (input.className.includes('all-ships')) {
+  if (input.className.includes('all-ships')) {
     const root = treeloom.getTopParentItem(target)
     const boards = treeloom.getChildrenByClass('boards', root.body)[0] as unknown as { children: Player[] }
     boards.children.forEach(set)

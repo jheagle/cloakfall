@@ -3,7 +3,9 @@
 //   npm run build && node scripts/e2e/hotseat.mjs
 import { attackRandomTarget, clickLabel, isOver, openGame, report, runCheck, shotCount, start, waitForShot } from './lib.mjs'
 
-const LIMIT_MS = Number(process.env.E2E_LIMIT_MS ?? 300000)
+// 0.9 s after every shot before the turn passes (updateScore's HIT_PAUSE_MS) makes a game ~300 s; CLOA-8's timing
+// config will let this shorten the pause instead
+const LIMIT_MS = Number(process.env.E2E_LIMIT_MS ?? 600000)
 // The screens between turns, which hand the device to the next player
 const PASS = /^(Continue|Ready|Start turn|OK)$/
 
