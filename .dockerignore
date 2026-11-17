@@ -1,0 +1,17 @@
+# Keep the build context to what the lobby image needs (see Dockerfile)
+node_modules
+dist
+browser
+docs
+.git
+coverage
+test-results
+playwright-report
+*.log
+.idea
+.vscode
+*.swp
+*~
+.DS_Store
+Dockerfile
+.dockerignore
