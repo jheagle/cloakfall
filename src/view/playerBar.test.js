@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { OWN_BOARD_EVENT, boardToShow, inPlay, initialBarState, installPlayerBar, nextBarState, oneBoardCss, readPlayers } from './playerBar'
+import { OWN_BOARD_EVENT, SHOT_ALERT_MS, boardToShow, inPlay, initialBarState, installPlayerBar, nextBarState, oneBoardCss, readPlayers } from './playerBar'
 
 const player = (index, overrides = {}) => ({
   index,
@@ -368,6 +368,52 @@ describe('installPlayerBar', () => {
     renderGame(main, [{ role: 'own', name: 'Ann', turn: 'winner' }, { role: 'summary', name: 'Bob', status: 0 }])
     await nextFrame()
     expect(told).toEqual([true, true, false])
+  })
+
+  describe('shots as they land', () => {
+    const shoot = (main, board, result) => {
+      const matrix = main.querySelectorAll('.boards > .player')[board].querySelector('.matrix')
+      const cell = document.createElement('div')
+      cell.className = 'column'
+      cell.dataset.shot = result
+      matrix.append(cell)
+      return cell
+    }
+
+    test('the struck player\'s entry says "Hit" or "Miss" for a moment, then goes back', async () => {
+      const { main, nav } = await setUp([{ role: 'own', name: 'Ann', turn: 'attacker' }, { role: 'target', name: 'Bob' }])
+      shoot(main, 1, 'hit')
+      await nextFrame()
+      const bob = nav.querySelectorAll('.player-bar-entry')[1]
+      expect(bob.classList.contains('was-hit')).toBe(true)
+      expect(bob.querySelector('.player-bar-alert').textContent).toBe('Hit')
+      await new Promise(resolve => setTimeout(resolve, SHOT_ALERT_MS + 50))
+      await nextFrame()
+      expect(bob.classList.contains('was-hit')).toBe(false)
+      expect(bob.querySelector('.player-bar-alert').textContent).toBe('')
+    }, SHOT_ALERT_MS + 5000)
+
+    test('a shot on the viewer\'s own board is announced (it may be out of sight in the drawer)', async () => {
+      const { main, nav } = await setUp([{ role: 'own', name: 'Ann' }, { role: 'target', name: 'Bob', turn: 'attacker' }])
+      shoot(main, 0, 'hit')
+      await nextFrame()
+      expect(nav.querySelector('.player-bar-announcer').textContent).toBe('Your fleet was hit')
+      expect(nav.querySelector('.player-bar-entry.is-own').classList.contains('was-hit')).toBe(true)
+      shoot(main, 0, 'miss')
+      await nextFrame()
+      expect(nav.querySelector('.player-bar-announcer').textContent).toBe('A shot missed your fleet')
+    })
+
+    test('shots already there when the game comes into view are not new', async () => {
+      const main = document.createElement('main')
+      main.className = 'game'
+      document.body.append(main)
+      renderGame(main, [{ role: 'own', name: 'Ann', turn: 'attacker', shots: 3 }, { role: 'target', name: 'Bob', shots: 4 }])
+      removeBar = installPlayerBar(main)
+      await nextFrame()
+      expect(document.querySelectorAll('.was-hit, .was-missed')).toHaveLength(0)
+      expect(document.querySelector('.player-bar-announcer').textContent).toBe('')
+    })
   })
 
   test('has-own-board while playing with an own board (wide screens dock it apart), not in robots only', async () => {
