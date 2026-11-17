@@ -8,6 +8,7 @@ import { getSession } from '../setup/gameSession'
 import { getGameMode } from '../setup/gameOptions'
 import { clearHeatHint, showHeatHint, victimsOf } from './heatHint'
 import { clearValidTargets, showValidTargets } from './validTargets'
+import { syncLocalTurnTimer } from '../setup/localTurnTimer'
 import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { Player } from '../types'
 
@@ -44,6 +45,8 @@ const updatePlayer = (player: Player, hitShip?: boolean, sunkShip: number = 0): 
   //   return player
   // }
   player.attacker = !player.attacker
+  // Local games with the turn timer on: start or stop the clock for this player's turn (localTurnTimer.ts)
+  syncLocalTurnTimer(player)
   const attackLock = getAttackLock(player)
   attackLock.isLocked = true
   // A human's heat-map hint shows on the boards they attack for the length of their turn

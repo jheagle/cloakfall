@@ -111,6 +111,22 @@ describe('createControlPanel', () => {
       document.body.innerHTML = ''
     })
 
+    test('a setting is a switch: flipping it sends its new value at once, with no question, and the menu stays open', () => {
+      const main = mainWith()
+      answering(main, [{ id: 'turn-timer', label: 'Turn timer', setting: { checked: false } }])
+      const sent = jest.fn(event => event.detail)
+      main.addEventListener(GAME_ACTION_EVENT, sent)
+      const menu = createControlPanel(main)
+      menu.setOpen(true)
+      const box = menu.panel.querySelector('[data-action="turn-timer"] input')
+      expect(box.checked).toBe(false)
+      box.checked = true
+      box.dispatchEvent(new Event('change'))
+      expect(sent).toHaveReturnedWith({ action: 'turn-timer', checked: true })
+      expect(menu.panel.querySelector('.player-bar-confirm')).toBeNull()
+      expect(menu.isOpen()).toBe(true)
+    })
+
     test('confirmed: closes the menu and sends the action to the game', () => {
       const main = mainWith()
       answering(main, [quit])

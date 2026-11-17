@@ -1,6 +1,7 @@
 import { GAME_ACTION_EVENT, GAME_ACTIONS_QUERY } from '../view/controlPanel'
-import { getGameSettings, getHintSetting } from './gameOptions'
-import { stopGame } from './gameSession'
+import { getGameMode, getGameSettings, getHintSetting } from './gameOptions'
+import { getSession, stopGame } from './gameSession'
+import { LOCAL_TURN_MS, setLocalTurnTimer } from './localTurnTimer'
 import { startNewGame } from './startNewGame'
 import { leaveOnlineGame } from './remoteLeaveListener'
 import { getLastRoomState } from './remoteListener'
@@ -36,7 +37,12 @@ export const gameActionsFor = (root: DomItemRoot): GameAction[] => {
         ]
       : [leave]
   }
+  // The turn timer: only where a human takes turns (not robots only), as a switch
+  const timer: GameAction[] = getGameMode(root) === 'robots'
+    ? []
+    : [{ id: 'turn-timer', label: `Turn timer (${LOCAL_TURN_MS / 1000} s, then a random shot)`, setting: { checked: getSession(root).turnTimer } }]
   return [
+    ...timer,
     { id: 'restart', label: 'Restart', confirm: 'Start a new game with the same settings? This one ends.', confirmLabel: 'Restart' },
     { id: 'quit', label: 'Quit to main menu', confirm: 'Quit this game and go back to the main menu?', confirmLabel: 'Quit' }
   ]
@@ -46,8 +52,9 @@ export const gameActionsFor = (root: DomItemRoot): GameAction[] => {
  * Do what the viewer confirmed in the game menu.
  * @param root
  * @param action
+ * @param checked a setting's new value (the turn timer)
  */
-export const runGameAction = (root: DomItemRoot, action: string): void => {
+export const runGameAction = (root: DomItemRoot, action: string, checked: boolean = false): void => {
   if (isOnline(root)) {
     if (action === 'leave') {
       leaveOnlineGame(root)
@@ -57,7 +64,9 @@ export const runGameAction = (root: DomItemRoot, action: string): void => {
     }
     return
   }
-  if (action === 'restart') {
+  if (action === 'turn-timer') {
+    setLocalTurnTimer(root, checked)
+  } else if (action === 'restart') {
     const { humans, robots, firstGoesFirst } = getGameSettings(root)
     startNewGame(root, humans, robots, firstGoesFirst, getHintSetting(root))
   } else if (action === 'quit') {
@@ -83,6 +92,7 @@ export const listenForGameActions = (root: DomItemRoot): void => {
     (event as CustomEvent<{ actions: GameAction[] }>).detail.actions.push(...gameActionsFor(root))
   })
   main.addEventListener(GAME_ACTION_EVENT, event => {
-    runGameAction(root, String((event as CustomEvent<{ action?: string }>).detail?.action ?? ''))
+    const detail = (event as CustomEvent<{ action?: string, checked?: boolean }>).detail
+    runGameAction(root, String(detail?.action ?? ''), Boolean(detail?.checked))
   })
 }
