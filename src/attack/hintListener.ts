@@ -1,4 +1,5 @@
 import treeloom from 'treeloom'
+import siFunciona from 'si-funciona'
 import { clearHeatHint, showHeatHint, victimsOf } from './heatHint'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { Player } from '../types'
@@ -11,6 +12,9 @@ import type { Player } from '../types'
 const hintListener = (e: Event, target: DomItem): void => {
   const player = treeloom.getParentsByClass('player', target)[0] as unknown as Player
   player.showHint = (e.target as HTMLInputElement).checked
+  // The checkbox's own item records it too: in online play the screen each player gets is built from the items, so
+  // without this every push until the stats are next rebuilt (updatePlayerStats) would show the box unchecked again
+  treeloom.updateElement(siFunciona.mergeObjectsMutable(target, { attributes: { checked: player.showHint } }) as DomItem)
   if (!player.attacker) {
     return // The hint only shows during the player's own turn; updatePlayer shows it when the turn starts
   }

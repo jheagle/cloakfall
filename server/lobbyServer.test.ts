@@ -511,10 +511,17 @@ describe('the lobby server', () => {
       expect(orderingMessage.attributes.innerHTML).toMatch(/click each player/i)
     })
 
-    // Every independent remote client renders both boards, live and clickable - nothing but this guard stops a
-    // click from resolving against any board regardless of whose turn it actually is or which socket sent it.
-    test('only the current attacker\'s own socket can act once real gameplay begins', async () => {
+    /**
+     * A started game played up to its first real turn: both players ready, the host sets the order (Alice first),
+     * and the turn's own follow-up updates have settled. Returns the sockets by role, the view at that point and
+     * helpers to find ids in it.
+     */
+    const reachFirstTurn = async () => {
       const { host, joiner, initialView, initialViews } = await setUpStartedGame()
+      // Each socket's own latest view: a player's own controls are only in their own push (redactGameState.ts)
+      const latest = new Map<ClientSocket, any>()
+      host.on('gameUpdate', view => latest.set(host, view))
+      joiner.on('gameUpdate', view => latest.set(joiner, view))
       const boardsIndex = initialView.children.findIndex((child: any) => child.attributes?.className === 'boards')
       const panelIndex = initialView.children[boardsIndex].children[0].children.findIndex((child: any) => child.attributes?.className === 'remote-placement-panel')
       const panel = initialView.children[boardsIndex].children[0].children[panelIndex]
@@ -580,6 +587,47 @@ describe('the lobby server', () => {
         host.on('gameUpdate', onUpdate)
         quietTimer = setTimeout(finish, 300)
       })
+      const latestView = (socket: ClientSocket): any => latest.get(socket)
+      return { host, joiner, boardsIndex, gameView, attackerSocket, nonAttackerSocket, attackerIndex, victimIndex, tileId, boardIndexOf, latestView }
+    }
+
+    /** A player's own sensor-scan checkbox in a view: Alice (the host) is player 0, Bob player 1. */
+    const hintCheckbox = (view: any, boardsIndex: number, playerIndex: number): any => {
+      const stats = view.children[boardsIndex].children[playerIndex].children.find((child: any) => child.attributes?.className === 'player-stats')
+      const controls = stats?.children.find((child: any) => child.attributes?.className === 'player-controls')
+      return controls?.children[0].children.find((child: any) => child.nodeName === 'input')
+    }
+
+    test('a player can use their own controls (the sensor-scan checkbox) on someone else\'s turn', async () => {
+      const { host, boardsIndex, attackerIndex, nonAttackerSocket, latestView } = await reachFirstTurn()
+      const ownIndex = attackerIndex === 0 ? 1 : 0
+      const checkbox = hintCheckbox(latestView(nonAttackerSocket), boardsIndex, ownIndex)
+      expect(checkbox.attributes.checked).toBe(false)
+      const ownUpdate = new Promise<any>(resolve => nonAttackerSocket.once('gameUpdate', resolve))
+      nonAttackerSocket.emit('gameAction', { itemId: checkbox.id, eventType: 'change', listenerFunc: 'hintListener', data: [], targetState: { checked: true } })
+      const view = await ownUpdate
+      expect(hintCheckbox(view, boardsIndex, ownIndex).attributes.checked).toBe(true)
+      expect(view.children[boardsIndex].children[ownIndex].showHint).toBe(true)
+      expect(host.connected).toBe(true)
+    })
+
+    test('nobody can use another player\'s controls, not even the current attacker', async () => {
+      const { boardsIndex, attackerIndex, attackerSocket, nonAttackerSocket, latestView } = await reachFirstTurn()
+      const otherIndex = attackerIndex === 0 ? 1 : 0
+      // The id comes from the other player's own view: it is never in the attacker's (redactGameState.ts)
+      const checkbox = hintCheckbox(latestView(nonAttackerSocket), boardsIndex, otherIndex)
+      expect(hintCheckbox(latestView(attackerSocket), boardsIndex, otherIndex)).toBeUndefined()
+      const sawUpdate = new Promise<string>(resolve => nonAttackerSocket.once('gameUpdate', () => resolve('update')))
+      attackerSocket.emit('gameAction', { itemId: checkbox.id, eventType: 'change', listenerFunc: 'hintListener', data: [], targetState: { checked: true } })
+      const raceResult = await Promise.race([sawUpdate, new Promise<string>(resolve => setTimeout(() => resolve('timeout'), 150))])
+      expect(raceResult).toBe('timeout')
+      expect(hintCheckbox(latestView(nonAttackerSocket), boardsIndex, otherIndex).attributes.checked).toBe(false)
+    })
+
+    // Every independent remote client renders both boards, live and clickable - nothing but this guard stops a
+    // click from resolving against any board regardless of whose turn it actually is or which socket sent it.
+    test('only the current attacker\'s own socket can act once real gameplay begins', async () => {
+      const { host, attackerSocket, nonAttackerSocket, victimIndex, tileId, boardsIndex, boardIndexOf } = await reachFirstTurn()
 
       // The non-attacker's own socket, attacking the real victim's board: silently ignored - not their turn.
       const sawUpdateFromNonAttacker = new Promise<string>(resolve => host.once('gameUpdate', () => resolve('update')))
