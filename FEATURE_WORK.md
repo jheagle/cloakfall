@@ -74,11 +74,11 @@ slices need a human visual review: screenshots at phone and desktop widths in ev
     ends the game for everyone, as leaving does today). **4d-2** online Restart and Return to lobby for the host:
     the server has no mid-game "end and go back to the waiting room" or restart yet (startGame refuses while a game
     runs).
-- [ ] **5. Turn banner (local multiplayer first).** Slides across the top: whose turn, "waiting for [player] to
+- [x] **5. Turn banner (local multiplayer first).** (#192, #193) Slides across the top: whose turn, "waiting for [player] to
   attack", and the countdown when the game-menu option is on (local games have no turn timer today; online has
   20 s). Sensor scan moves off the board into the turn's controls. Skill: ui + logic. (notes [5])
   - Split (2026-11-17): **5a** (done, #192) the banner in every mode, with the online turn countdown moved into it.
-    **5b** the opt-in local turn timer (game menu), its countdown in the banner.
+    **5b** (done, #193) the opt-in local turn timer (game menu), its countdown in the banner.
 - [ ] **6. Show which board got hit before the view switches.** A short pause on the struck cell and board, then
   the perspective changes. Replaces what the coloured borders used to show. Skill: ui + logic. (notes [8])
 - [ ] **1. Drop the sensor-scan option from the single-player and robots-only pre-game screens** (agent). It lives
