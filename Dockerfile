@@ -20,6 +20,6 @@ COPY --from=build /app/dist/server ./dist/server
 USER node
 EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD ["node", "-e", "fetch('http://127.0.0.1:3002/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+  CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3002)+'/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 # node directly, not npm, so signals (docker stop) reach the server itself
 CMD ["node", "dist/server/server/lobbyServer.js"]

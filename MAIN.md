@@ -44,7 +44,7 @@ A page served somewhere else can name a hosted lobby instead, with a meta tag in
 <meta name="cloakfall-lobby" content="https://cloakfall.joshuaheagle.com">
 ```
 
-The tag's value is used when it is an `http:` or `https:` URL (a trailing slash is dropped); anything else is ignored
+The tag's origin is used when it is an `http:` or `https:` URL (any path or query is dropped); anything else is ignored
 and the page falls back to its own host on port 3002. `status.html` follows the same rule, so it checks the same
 server. This repo's own `index.html` and `status.html` have no tag, for LAN and local play; the website's copy of the
 game adds it.

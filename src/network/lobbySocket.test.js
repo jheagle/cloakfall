@@ -43,6 +43,11 @@ describe('lobbyUrl', () => {
 
     afterEach(() => meta.remove())
 
+    test("uses only the tag's origin: a path or query would otherwise become a socket.io namespace", () => {
+      meta.content = 'https://cloakfall.joshuaheagle.com:8443/lobby/?x=1'
+      expect(lobbyUrl(page)).toBe('https://cloakfall.joshuaheagle.com:8443')
+    })
+
     test("uses the tag's https URL, without its trailing slash", () => {
       meta.content = 'https://cloakfall.joshuaheagle.com/'
       expect(configuredLobbyUrl()).toBe('https://cloakfall.joshuaheagle.com/')

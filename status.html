@@ -74,7 +74,7 @@
   const configuredLobbyUrl = () => {
     try {
       const url = new URL(document.querySelector('meta[name="cloakfall-lobby"]')?.getAttribute('content') ?? '')
-      return /^https?:$/.test(url.protocol) ? url.href.replace(/\/$/, '') : null
+      return /^https?:$/.test(url.protocol) ? url.origin : null
     } catch {
       return null
     }

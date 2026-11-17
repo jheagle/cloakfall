@@ -18,7 +18,7 @@ export const configuredLobbyUrl = (doc: Pick<Document, 'querySelector'> | null =
 
 /**
  * The lobby server's URL. A page that names its lobby with a cloakfall-lobby meta tag (the website's copy of the game,
- * against the hosted lobby) uses that, when it is an http: or https: URL; anything else in the tag is ignored. Without
+ * against the hosted lobby) uses that tag's origin, when it is an http: or https: URL; anything else in the tag is ignored. Without
  * one, it is port 3002 on the host the page was loaded from, so a phone that opened the game from the laptop's LAN
  * address (http://192.168.x.y:8080) reaches the laptop's lobby (npm run serve:lobby), not itself. Outside a page (Node,
  * tests), or for a page opened from a file, it is localhost.
@@ -32,8 +32,9 @@ export const lobbyUrl = (
   if (configured) {
     try {
       const url = new URL(configured)
+      // Only the origin: socket.io would take any path as a namespace (and quietly connect to the wrong one).
       if (/^https?:$/.test(url.protocol)) {
-        return url.href.replace(/\/$/, '')
+        return url.origin
       }
     } catch {
       // Not a URL: fall back to the page's own host
