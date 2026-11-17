@@ -4,7 +4,7 @@ import { stopGame } from './gameSession'
 import { startNewGame } from './startNewGame'
 import { leaveOnlineGame } from './remoteLeaveListener'
 import { getLastRoomState } from './remoteListener'
-import { getSocketId } from '../network/lobbySocket'
+import { getSocketId, hostGameAction } from '../network/lobbySocket'
 import startMenu from './startMenu'
 import type { GameAction } from '../view/controlPanel'
 import type { DomItemRoot } from 'treeloom/dist/domItem/types'
@@ -14,20 +14,27 @@ const isOnline = (root: DomItemRoot): boolean => Boolean((root as DomItemRoot & 
 
 /**
  * The game menu's "Game" section for what is on screen now. Local games (single player, local multiplayer, robots
- * only): Restart with the same settings, and Quit to the main menu. Online: Leave game, which for the host ends it for
- * everyone (the server closes a room its host leaves). Online Restart and Return to lobby (host) need the server's
- * help, and come in 4d-2.
+ * only): Restart with the same settings, and Quit to the main menu. Online, the host: Restart (a new game for everyone,
+ * same settings) and Return to lobby (everyone back to the waiting room), both through the server's hostGameAction;
+ * everyone: Leave game, which for the host ends it for everyone (the server closes a room its host leaves).
  * @param root
  */
 export const gameActionsFor = (root: DomItemRoot): GameAction[] => {
   if (isOnline(root)) {
     const host = getLastRoomState()?.hostId === getSocketId()
-    return [{
+    const leave: GameAction = {
       id: 'leave',
       label: 'Leave game',
       confirm: host ? 'Leave the game? You are the host: it ends for everyone.' : 'Leave the game? The others play on without you.',
       confirmLabel: 'Leave'
-    }]
+    }
+    return host
+      ? [
+          { id: 'restart', label: 'Restart', confirm: 'Start a new game for everyone with the same settings? This one ends.', confirmLabel: 'Restart' },
+          { id: 'lobby', label: 'Return to lobby', confirm: 'End this game for everyone and go back to the waiting room?', confirmLabel: 'Return to lobby' },
+          leave
+        ]
+      : [leave]
   }
   return [
     { id: 'restart', label: 'Restart', confirm: 'Start a new game with the same settings? This one ends.', confirmLabel: 'Restart' },
@@ -44,6 +51,9 @@ export const runGameAction = (root: DomItemRoot, action: string): void => {
   if (isOnline(root)) {
     if (action === 'leave') {
       leaveOnlineGame(root)
+    } else if (action === 'restart' || action === 'lobby') {
+      // Everyone, the host included, is then sent back to the waiting room by the server (remoteListener.ts)
+      hostGameAction(action).catch(() => {})
     }
     return
   }

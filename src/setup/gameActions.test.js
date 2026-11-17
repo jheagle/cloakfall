@@ -47,12 +47,16 @@ describe('the game menu\'s actions', () => {
     expect(document.querySelector('.final-scores')).not.toBeNull()
   })
 
-  test('online: Leave game, worded for the host (it ends for everyone) or a guest', () => {
+  test('online: the host can Restart, Return to lobby or Leave; a guest can Leave', () => {
     const root = { forwardEvents: () => {} }
     jest.spyOn(lobbySocket, 'getSocketId').mockReturnValue('me')
     jest.spyOn(remoteListener, 'getLastRoomState').mockReturnValue({ hostId: 'me' })
-    expect(gameActionsFor(root)).toEqual([expect.objectContaining({ id: 'leave', confirm: expect.stringMatching(/ends for everyone/) })])
+    // The host: Restart and Return to lobby for everyone, and Leave (which ends it for everyone)
+    expect(gameActionsFor(root).map(action => action.id)).toEqual(['restart', 'lobby', 'leave'])
+    expect(gameActionsFor(root)[2].confirm).toMatch(/ends for everyone/)
+    // A guest: only Leave
     remoteListener.getLastRoomState.mockReturnValue({ hostId: 'someone else' })
+    expect(gameActionsFor(root).map(action => action.id)).toEqual(['leave'])
     expect(gameActionsFor(root)[0].confirm).toMatch(/play on without you/)
     jest.restoreAllMocks()
   })

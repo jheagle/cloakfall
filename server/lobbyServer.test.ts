@@ -611,6 +611,77 @@ describe('the lobby server', () => {
       expect(host.connected).toBe(true)
     })
 
+    describe('the host\'s game menu mid-game (hostGameAction)', () => {
+      /** Resolves with the next payload of `event` on `socket`, or 'none' if none arrives within `ms`. */
+      const next = (socket: ClientSocket, event: string, ms: number = 2000): Promise<any> => new Promise(resolve => {
+        const timer = setTimeout(() => resolve('none'), ms)
+        socket.once(event, (payload: any) => {
+          clearTimeout(timer)
+          resolve(payload)
+        })
+      })
+
+      test('Return to lobby: everyone goes back to the waiting room, the game stops, and a new one can start', async () => {
+        const { host, joiner } = await reachFirstTurn()
+        const backs = [next(host, 'backToLobby'), next(joiner, 'backToLobby')]
+        expect(await emit(host, 'hostGameAction', { action: 'lobby' })).toEqual({ ok: true })
+        const [hostState, joinerState] = await Promise.all(backs)
+        expect(hostState.players.map((player: any) => player.name)).toEqual(['Alice', 'Bob'])
+        expect(joinerState).toEqual(hostState)
+        // Stopped: nothing more is pushed for it
+        expect(await next(joiner, 'gameUpdate', 1500)).toBe('none')
+        // And the room is free for the next game
+        const firstPush = next(joiner, 'gameUpdate')
+        expect(await emit(host, 'startGame', { hints: 'optional' })).toEqual({ started: true })
+        expect(await firstPush).not.toBe('none')
+      })
+
+      test('Restart: everyone goes back to the waiting room, then the new game\'s first push follows at once', async () => {
+        const { host, joiner } = await reachFirstTurn()
+        const order: string[] = []
+        joiner.once('backToLobby', () => order.push('backToLobby'))
+        const firstPush = new Promise<any>(resolve => joiner.once('gameUpdate', view => {
+          order.push('gameUpdate')
+          resolve(view)
+        }))
+        expect(await emit(host, 'hostGameAction', { action: 'restart' })).toEqual({ ok: true })
+        const view = await firstPush
+        expect(order).toEqual(['backToLobby', 'gameUpdate'])
+        // A new game: placing ships again
+        const boardsIndex = view.children.findIndex((child: any) => child.attributes?.className === 'boards')
+        expect(view.children[boardsIndex].children[0].children.some((child: any) => child.attributes?.className === 'remote-placement-panel')).toBe(true)
+      })
+
+      test('only the host, and only the two known actions', async () => {
+        const { host, joiner } = await reachFirstTurn()
+        const back = next(joiner, 'backToLobby', 1000)
+        expect(await emit(joiner, 'hostGameAction', { action: 'lobby' })).toEqual({ error: 'Only the host can do that' })
+        expect(await emit(host, 'hostGameAction', { action: 'explode' })).toEqual({ error: 'Unknown game action' })
+        expect(await emit(host, 'hostGameAction', 'lobby')).toEqual({ error: 'Unknown game action' })
+        expect(await back).toBe('none')
+      })
+
+      test('a stopped game never pushes again, even if a step it had queued finishes afterwards', async () => {
+        const broadcasts: Array<() => void> = []
+        const realWatch = gameplay.watchRoomGame
+        jest.spyOn(gameplay, 'watchRoomGame').mockImplementation((...args) => {
+          const broadcast = realWatch(...args)
+          broadcasts.push(broadcast)
+          return broadcast
+        })
+        try {
+          const { host, joiner } = await reachFirstTurn()
+          await emit(host, 'hostGameAction', { action: 'lobby' })
+          const late = next(joiner, 'gameUpdate', 1000)
+          // The old game's own broadcast, as a step it had queued would call it
+          broadcasts[0]()
+          expect(await late).toBe('none')
+        } finally {
+          jest.restoreAllMocks()
+        }
+      })
+    })
+
     test('nobody can use another player\'s controls, not even the current attacker', async () => {
       const { boardsIndex, attackerIndex, attackerSocket, nonAttackerSocket, latestView } = await reachFirstTurn()
       const otherIndex = attackerIndex === 0 ? 1 : 0

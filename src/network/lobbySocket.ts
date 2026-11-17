@@ -138,6 +138,23 @@ export const onGameUpdate = (callback: (redactedBody: object) => void): void => 
   connectLobbySocket().off('gameUpdate').on('gameUpdate', callback)
 }
 
+/** Stop listening for game updates (leaving a game), without connecting a socket that isn't there. A stopped game's
+ * late push must never be drawn over whatever comes next (the waiting room, the menu). */
+export const offGameUpdate = (): void => {
+  socket?.off('gameUpdate')
+}
+
+/** The host's game menu, mid-game: end the game for everyone and go back to the waiting room ('lobby'), or start
+ * a new one with the same settings ('restart'). See server/lobbyServer.ts's hostGameAction. */
+export const hostGameAction = (action: 'restart' | 'lobby'): Promise<{ ok: true } | { error: string }> =>
+  request('hostGameAction', { action })
+
+/** Be told when the host has ended the game and everyone goes back to the waiting room (with the room's state).
+ * Replaces any previous listener. */
+export const onBackToLobby = (callback: (state: RoomState) => void): void => {
+  connectLobbySocket().off('backToLobby').on('backToLobby', callback)
+}
+
 /** Forward a user interaction to the server instead of running its listener locally - see setForwardEvents. */
 export const sendGameAction = (envelope: ForwardedEvent): void => {
   connectLobbySocket().emit('gameAction', envelope)
