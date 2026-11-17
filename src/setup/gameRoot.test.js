@@ -36,8 +36,10 @@ describe('gameRoot', () => {
     expect(main.querySelector('.main-menu')).not.toBeNull()
     expect(treeloom.getChildrenByClass('main-menu', root.body)).toHaveLength(1)
     // nothing the game renders is left outside the landmarks; the one extra layer is the robots' demo, hidden scenery.
-    // After main: the player bar (a nav landmark of its own, hidden until play starts) and its stylesheet
-    expect([...document.body.children].map(child => child.tagName)).toEqual(['HEADER', 'DIV', 'MAIN', 'NAV', 'STYLE'])
+    // After main: the player bar (a nav landmark of its own, hidden until play starts), the turn banner (hidden too)
+    // and the bar's stylesheet
+    expect([...document.body.children].map(child => child.tagName)).toEqual(['HEADER', 'DIV', 'MAIN', 'NAV', 'DIV', 'STYLE'])
+    expect(document.querySelector('.turn-banner').hidden).toBe(true)
     expect(document.querySelector('nav.player-bar').getAttribute('aria-label')).toBe('Players')
     const demo = document.body.children[1]
     expect(demo.className).toBe('intro-demo')

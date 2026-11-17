@@ -11,6 +11,7 @@ import treeloomMatrix from 'treeloom-matrix'
 import { enterRemoteGame, leaveRemoteGame } from './remoteGame'
 import gameRoot from '../setup/gameRoot'
 import { connectLobbySocket, disconnectLobbySocket } from './lobbySocket'
+import { TURN_DEADLINE_EVENT } from '../view/turnBanner'
 
 let httpServer
 let io
@@ -342,16 +343,31 @@ describe('enterRemoteGame: the boards stay keyboard navigable across re-renders'
 })
 
 describe('enterRemoteGame: the countdown', () => {
-  test('is a timer in the page header, not loose in the body', () => {
+  test('placing ships: a timer in the page header, not loose in the body', () => {
     // The browser's real root: the game renders into <main>, under the header (see gameRoot)
     document.body.innerHTML = ''
     const root = gameRoot({})
-    enterRemoteGame(root, { attributes: { 'data-turn-deadline': String(Date.now() + 30000) }, ...bodyWithClass('boards') })
+    enterRemoteGame(root, { attributes: { 'data-placement-deadline': String(Date.now() + 30000) }, ...bodyWithClass('boards') })
     const countdown = document.querySelector('.remote-countdown')
     expect(countdown.getAttribute('role')).toBe('timer')
     expect(countdown.parentElement).toBe(document.querySelector('header.game-header'))
     expect(document.querySelector('main .boards')).not.toBeNull()
     leaveRemoteGame(root)
     expect(document.querySelector('.remote-countdown')).toBeNull()
+  })
+
+  test('a turn: its deadline goes to the turn banner (no corner countdown), and leaving clears it', () => {
+    document.body.innerHTML = ''
+    const root = gameRoot({})
+    const told = []
+    const listen = event => told.push(event.detail.deadline)
+    document.addEventListener(TURN_DEADLINE_EVENT, listen)
+    const deadline = Date.now() + 20000
+    enterRemoteGame(root, { attributes: { 'data-turn-deadline': String(deadline) }, ...bodyWithClass('boards') })
+    expect(told).toEqual([deadline])
+    expect(document.querySelector('.remote-countdown')?.style.display ?? 'none').toBe('none')
+    leaveRemoteGame(root)
+    expect(told[told.length - 1]).toBeNull()
+    document.removeEventListener(TURN_DEADLINE_EVENT, listen)
   })
 })

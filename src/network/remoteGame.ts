@@ -1,6 +1,7 @@
 import treeloom from 'treeloom'
 import treeloomMatrix from 'treeloom-matrix'
 import { offGameUpdate, onGameUpdate, sendGameAction } from './lobbySocket'
+import { TURN_DEADLINE_EVENT } from '../view/turnBanner'
 import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { Point } from 'treeloom-matrix/dist/point/types'
 import type { Board } from '../types'
@@ -100,8 +101,8 @@ const ensureCountdownElement = (): void => {
   ;(document.querySelector('header.game-header') ?? document.body).appendChild(countdownElement)
 }
 
-/** Start, update, or stop the visual countdown, as each new deadline (or its absence) comes in. */
-const setCountdownDeadline = (info: { kind: DeadlineKind, deadline: number } | null): void => {
+/** Start, update, or stop the corner countdown (now only for placing ships), as each new deadline comes in. */
+const showCornerCountdown = (info: { kind: DeadlineKind, deadline: number } | null): void => {
   countdownKind = info?.kind ?? null
   countdownDeadline = info?.deadline ?? null
   if (info === null) {
@@ -115,8 +116,26 @@ const setCountdownDeadline = (info: { kind: DeadlineKind, deadline: number } | n
   renderCountdown()
 }
 
+/** Tell the turn banner (view/turnBanner.ts) when the current turn runs out, or that it has no limit (null). */
+const tellTurnDeadline = (deadline: number | null): void => {
+  if (typeof document !== 'undefined') {
+    document.dispatchEvent(new CustomEvent(TURN_DEADLINE_EVENT, { detail: { deadline } }))
+  }
+}
+
+/**
+ * Show each new deadline (or its absence) as a push brings it: a turn's in the turn banner, beside whose turn it is;
+ * placing ships' in the corner countdown (the banner is only there during play).
+ * @param info
+ */
+const setCountdownDeadline = (info: { kind: DeadlineKind, deadline: number } | null): void => {
+  tellTurnDeadline(info?.kind === 'turn' ? info.deadline : null)
+  showCornerCountdown(info?.kind === 'placement' ? info : null)
+}
+
 /** Remove the countdown entirely - called once the remote game is left. */
 const stopCountdown = (): void => {
+  tellTurnDeadline(null)
   if (countdownInterval !== null) {
     clearInterval(countdownInterval)
     countdownInterval = null
