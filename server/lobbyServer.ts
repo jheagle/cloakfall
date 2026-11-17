@@ -8,6 +8,7 @@ import { cleanGameAction, cleanName, isHintSetting, isRecord, MAX_LOBBY_NAME, MA
 import { clientAddress, createFailureCounter, createRateLimiter, DEFAULT_LIMITS, settingsFromEnv } from './limits'
 import { version } from '../src/version'
 import { isHostOnlyStage, isRemoteSessionActive, remotePlacementStage } from '../src/setup/remotePlacement'
+import { PLAYER_CONTROLS_CLASS } from '../src/components/pieces/playerStats'
 import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'http'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { ForwardedEvent } from 'treeloom/dist/events/types'
@@ -420,36 +421,38 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
       if (isHostOnlyStage(room.game.root) && socket.id !== room.hostId) {
         return
       }
-      // While actively placing, a viewer's own push only ever includes their own player at all any more (see
-      // redactGameState.ts's applyPlacingView) - but an id is a real, resolvable server-side reference, not
-      // markup a client has to already have on screen to use: a hand-built gameAction payload could still
-      // name another player's own board by id (guessed, or recalled from an earlier stage's push), even with
-      // nothing to see or un-hide in devtools any more. Resolve the envelope's own target first and refuse
-      // anything that doesn't land inside the dispatching socket's own player. A stale id (the tree already
-      // moved on, or never had it - see treeloom's getItemById) is refused the same way a real one that
-      // resolves to someone else is - it throws for that, never silently resolves to the wrong spot.
-      if (remotePlacementStage(room.game.root) === 'placing') {
-        let target: DomItem
-        try {
-          target = treeloom.getItemById(room.game.root, envelope.itemId) as DomItem
-        } catch {
-          return
-        }
-        const owner = treeloom.getParentsByClass('player', target)[0]
-        if (!owner || room.game.playerBySocket.get(socket.id) !== owner) {
-          return
-        }
+      // An id is a real, resolvable server-side reference, not markup a client has to already have on screen to
+      // use: a hand-built gameAction payload could name another player's board or controls by id (guessed, or
+      // recalled from an earlier push). So resolve the envelope's own target first and work out whose player it
+      // belongs to. A stale id (the tree already moved on, or never had it - see treeloom's getItemById) is refused
+      // here: it throws for that, never silently resolves to the wrong spot.
+      let target: DomItem
+      try {
+        target = treeloom.getItemById(room.game.root, envelope.itemId) as DomItem
+      } catch {
+        return
       }
-      // Once real gameplay begins (placement/ordering both over), only the current attacker's own socket may
-      // act at all - every independent remote client renders every board, live and clickable, with nothing
-      // else stopping a click from resolving against any board regardless of whose turn it actually is or
-      // which socket sent it. attackFleet.ts's own player.attacker check already refuses the attacker hitting
-      // their *own* board, but has no notion of sockets at all - it only ever sees whichever board a click
-      // happened to target, never who sent the click. This is the socket-identity half that check cannot do on
-      // its own.
-      if (!isRemoteSessionActive(room.game.root)) {
+      const sender = room.game.playerBySocket.get(socket.id)
+      const ownsTarget = Boolean(sender) && treeloom.getParentsByClass('player', target)[0] === sender
+      // A player's own controls (PLAYER_CONTROLS_CLASS: the sensor-scan checkbox, and the in-game control panel
+      // later) are theirs alone, in every stage: nobody else may use them, not even the current attacker.
+      const inControls = treeloom.getParentsByClass(PLAYER_CONTROLS_CLASS, target).length > 0
+      if (inControls && !ownsTarget) {
+        return
+      }
+      // While actively placing, a viewer's own push only ever includes their own player (see redactGameState.ts's
+      // applyPlacingView); anything that doesn't land inside the sender's own player is refused.
+      if (remotePlacementStage(room.game.root) === 'placing' && !ownsTarget) {
+        return
+      }
+      // Once real gameplay begins (placement/ordering both over), every remote client renders every board, live
+      // and clickable, so only the current attacker's own socket may act on the game itself - attackFleet.ts's own
+      // player.attacker check refuses the attacker hitting their *own* board, but has no notion of sockets, so this
+      // is the socket-identity half it cannot do on its own. Own controls are the exception: their owner may use
+      // them at any time, also on someone else's turn (checked just above).
+      if (!isRemoteSessionActive(room.game.root) && !inControls) {
         const attacker = room.game.players.find(player => player.attacker)
-        if (room.game.playerBySocket.get(socket.id) !== attacker) {
+        if (sender !== attacker) {
           return
         }
       }

@@ -4,6 +4,7 @@ import checkIfHitCell from '../utils/checkIfHitCell'
 import labelTile from '../cells/labelTile'
 import { roleFor } from '../attack/playerView'
 import { remotePlacementStage } from '../setup/remotePlacement'
+import { PLAYER_CONTROLS_CLASS } from '../components/pieces/playerStats'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { Board, Player, Ship, Tile } from '../types'
 
@@ -85,7 +86,7 @@ const disableControls = (panel: DomItem): DomItem => ({
  */
 const hidePlayerControls = (stats: DomItem): DomItem => ({
   ...stats,
-  children: stats.children.filter(child => classNameOf(child) !== 'player-controls')
+  children: stats.children.filter(child => classNameOf(child) !== PLAYER_CONTROLS_CLASS)
 }) as DomItem
 
 /**

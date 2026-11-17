@@ -4,6 +4,14 @@ import type { Player } from '../../types'
 import { htmlEscape } from 'si-funciona'
 
 /**
+ * The class of a player's own controls (the sensor-scan checkbox today; the in-game control panel later). In online
+ * play, controls inside it belong to that player alone: the lobby lets their owner use them at any time, even when it
+ * is someone else's turn, and nobody else at all (lobbyServer.ts's gameAction; redactGameState.ts removes them from
+ * everyone else's view).
+ */
+export const PLAYER_CONTROLS_CLASS = 'player-controls'
+
+/**
  * The defined attributes for each player. The name and status run across the top; the player's checkboxes are stacked
  * on the left, and the ship list is on the right.
  * @param player
@@ -79,7 +87,7 @@ const playerStats = (player: Player, status: string = '', item: DomItem = player
         ? [{
             nodeName: 'div',
             attributes: {
-              className: 'player-controls'
+              className: PLAYER_CONTROLS_CLASS
             },
             children: controls
           }]
