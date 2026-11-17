@@ -440,3 +440,65 @@ body.has-player-bar main.game .player-controls, body.has-player-bar main.game > 
   .player-bar-confirm
     margin: 0 0 .4rem
     font-size: 1.5rem
+
+// The turn banner (src/view/turnBanner.ts): whose turn it is, across the top during play, sliding in afresh at every
+// turn change. The boards (and a docked own board) start below it.
+.turn-banner
+  position: fixed
+  top: .8rem
+  left: 50%
+  z-index: 900
+  transform: translateX(-50%)
+  display: flex
+  align-items: baseline
+  gap: 1rem
+  box-sizing: border-box
+  max-width: calc(100vw - 1.6rem)
+  padding: .7rem 1.6rem
+  border: .2rem solid #3a4770
+  border-left: .8rem solid var(--player-colour, #3a4770)
+  border-radius: .8rem
+  background-color: rgba(16, 23, 44, .96)
+  box-shadow: 0 .4rem 1.6rem rgba(0, 0, 0, .5)
+  color: #e8ecf8
+  font-size: 1.7rem
+  font-weight: 700
+  white-space: nowrap
+
+  &[hidden]
+    display: none
+
+  &.is-new
+    animation: turn-banner-in 450ms ease-out
+
+  .turn-banner-text
+    overflow: hidden
+    text-overflow: ellipsis
+
+  .turn-banner-countdown
+    font-variant-numeric: tabular-nums
+    color: #ff8a3d
+
+    &[hidden]
+      display: none
+
+@keyframes turn-banner-in
+  from
+    transform: translate(-50%, -150%)
+    opacity: 0
+
+  to
+    transform: translate(-50%, 0)
+    opacity: 1
+
+@media (prefers-reduced-motion: reduce)
+  .turn-banner.is-new
+    animation: none
+
+body.has-turn-banner main.game > .boards
+  padding-top: 6.5rem
+
+@media (min-width: 760px)
+  body.has-turn-banner.has-own-board main.game > .boards > .player.role-own
+    top: 6.5rem
+    max-height: calc(100vh - 15.5rem)

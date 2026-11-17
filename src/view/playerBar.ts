@@ -12,6 +12,7 @@
 
 /** Wider than this, every board is shown (side by side); narrower, one opponent at a time. */
 import createControlPanel from './controlPanel'
+import createTurnBanner from './turnBanner'
 
 export const ONE_BOARD_MAX_WIDTH_PX = 759
 
@@ -306,6 +307,9 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
   const menu = createControlPanel(main)
   nav.prepend(menu.panel)
   nav.append(menu.button)
+  // Whose turn it is, across the top (turnBanner.ts)
+  const banner = createTurnBanner(doc)
+  nav.after(banner.element)
 
   /**
    * Tell the game whether the viewer's own board is open: the drawer on a phone; docked on a wide screen, so open
@@ -346,6 +350,7 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
     // Wide screens dock the viewer's own board in a column of its own, apart from the opponents' boards
     // (layouts-custom.sass); robots-only has no own board, so the opponents keep the whole width
     doc.body.classList.toggle('has-own-board', playing && ownNow !== null)
+    banner.update(players, playing)
     if (!playing) {
       state = initialBarState()
       rendered = ''
@@ -445,6 +450,7 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
 
   return () => {
     observer.disconnect()
+    banner.destroy()
     doc.removeEventListener('keydown', onKey)
     doc.removeEventListener('click', onOutsideTap, true)
     narrow?.removeEventListener?.('change', onWidth)
