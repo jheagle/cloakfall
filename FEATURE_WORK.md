@@ -79,13 +79,14 @@ slices need a human visual review: screenshots at phone and desktop widths in ev
   20 s). Sensor scan moves off the board into the turn's controls. Skill: ui + logic. (notes [5])
   - Split (2026-11-17): **5a** (done, #192) the banner in every mode, with the online turn countdown moved into it.
     **5b** (done, #193) the opt-in local turn timer (game menu), its countdown in the banner.
-- [ ] **6. Show which board got hit before the view switches.** A short pause on the struck cell and board, then
+- [x] **6. Show which board got hit before the view switches.** (#194) A short pause on the struck cell and board, then
   the perspective changes. Replaces what the coloured borders used to show. Skill: ui + logic. (notes [8])
-- [ ] **1. Drop the sensor-scan option from the single-player and robots-only pre-game screens** (agent). It lives
+- [ ] **1. Drop the sensor-scan option from the single-player and robots-only pre-game screens** (agent). Moved to
+  **CLOA-17** when the epic closed (2026-11-17). It lives
   in the control panel (4c); robots-only has no human, so no hints. Skill: ui. (notes [1])
-- [ ] **2. Turn-order screen: names only** (agent). "All players are ready, choose who goes first": no sensor-scan
+- [ ] **2. Turn-order screen: names only** (agent). Moved to **CLOA-18** when the epic closed (2026-11-17). "All players are ready, choose who goes first": no sensor-scan
   checkbox, no game stats. Skill: ui. (notes [4])
-- [ ] **7. Robot speed in the game menu.** Shown when the game has robots; host only online; hidden in local games
+- [ ] **7. Robot speed in the game menu.** Folded into **CLOA-9** when the epic closed (2026-11-17). Shown when the game has robots; host only online; hidden in local games
   without robots. Blocked by CLOA-8 (configurable timings). Skill: logic + ui. (notes [7])
 
 ## Open questions (suggested defaults; change them here before the slice starts)
