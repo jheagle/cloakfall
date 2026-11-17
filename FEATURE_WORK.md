@@ -65,7 +65,7 @@ slices need a human visual review: screenshots at phone and desktop widths in ev
   `displayTargets`/`resetTargets` border painting (most of the ~2,400 style writes per shot measured in the treeloom
   work, so faster too). Also makes the sensor-scan heat map show only to the player who turned it on (today
   everyone sees it during that player's turn; public information only, found in CLOA-14). Skill: ui + logic. (notes [2])
-- [ ] **4c. Player control panel.** Opens from the bar: "Sensor scan" (when the game's hint setting is optional)
+- [x] **4c. Player control panel.** (#189) Opens from the bar: "Sensor scan" (when the game's hint setting is optional)
   and "Show my ships" (where it applies). Inside `PLAYER_CONTROLS_CLASS`, so it works on any turn in online games.
   Skill: ui. (notes [3])
 - [ ] **4d. Game menu.** Quit (to the main menu), Restart (every player; host only online), Return to lobby (online
