@@ -1,5 +1,6 @@
 import { gameName } from '../theme'
 import treeloom from 'treeloom'
+import installPlayerBar from '../view/playerBar'
 import type { DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { ListenerFunction } from 'treeloom/dist/events/types'
 
@@ -48,6 +49,8 @@ export const gameLayout = (doc: Document): { header: HTMLElement | null, main: H
  */
 const gameRoot = (listeners: Record<string, ListenerFunction>): DomItemRoot => {
   const { main } = gameLayout(document)
+  // The bar under the boards during play (outside the tree, see playerBar.ts)
+  installPlayerBar(main)
   const head = treeloom.createDomItem({ nodeName: 'head', attributes: {}, element: document.head, children: [] })
   const body = treeloom.createDomItem({ nodeName: 'main', attributes: { className: 'game' }, element: main, children: [] })
   return treeloom.documentDomItem(listeners, treeloom.initRoot([head, body], listeners))

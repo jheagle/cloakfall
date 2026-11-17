@@ -73,7 +73,12 @@ const playerStats = (player: Player, status: string = '', item: DomItem = player
   return {
     nodeName: 'div',
     attributes: {
-      className: 'player-stats'
+      className: 'player-stats',
+      // The same facts as data, for the player bar (src/view/playerBar.ts), which runs outside the game's tree and
+      // reads the rendered page: a status as a number, and whose turn it is (the text above says "ATTACKER" instead
+      // of the status then). Rounded like the text.
+      'data-status': String(Math.round((player.status ?? 0) * 100) / 100),
+      'data-turn': player.attacker ? 'attacker' : (status === 'WINNER' ? 'winner' : '')
     },
     children: [
       {
