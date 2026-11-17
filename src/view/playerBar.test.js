@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { boardToShow, inPlay, initialBarState, installPlayerBar, nextBarState, oneBoardCss, readPlayers } from './playerBar'
+import { OWN_BOARD_EVENT, boardToShow, inPlay, initialBarState, installPlayerBar, nextBarState, oneBoardCss, readPlayers } from './playerBar'
 
 const player = (index, overrides = {}) => ({
   index,
@@ -200,10 +200,10 @@ describe('installPlayerBar', () => {
       { role: 'target', name: 'Bob' },
       { role: 'target', name: 'Cy' }
     ])
-    nav.querySelectorAll('button')[2].click()
+    nav.querySelectorAll('.player-bar-entry')[2].click()
     await nextFrame()
     expect(style.textContent).toContain(':nth-child(3)')
-    expect(Array.from(nav.querySelectorAll('button')).map(button => button.getAttribute('aria-pressed'))).toEqual([null, 'false', 'true'])
+    expect(Array.from(nav.querySelectorAll('.player-bar-entry')).map(button => button.getAttribute('aria-pressed'))).toEqual([null, 'false', 'true'])
   })
 
   test('a turn change updates the entries in place: the same elements, only what changed', async () => {
@@ -249,6 +249,17 @@ describe('installPlayerBar', () => {
       expect(ownEntry(nav).getAttribute('aria-expanded')).toBe('false')
     })
 
+    test('tells the game the own board is open only while the drawer is', async () => {
+      const told = []
+      document.addEventListener(OWN_BOARD_EVENT, event => told.push(event.detail.open), true)
+      const { nav } = await setUp(game)
+      ownEntry(nav).click()
+      await nextFrame()
+      ownEntry(nav).click()
+      await nextFrame()
+      expect(told).toEqual([false, true, false])
+    })
+
     test('Escape closes it and puts focus back on the own entry', async () => {
       const { nav } = await setUp(game)
       ownEntry(nav).click()
@@ -276,7 +287,7 @@ describe('installPlayerBar', () => {
       const { main, nav } = await setUp(game)
       ownEntry(nav).click()
       main.querySelector('.role-own .matrix').click()
-      nav.querySelectorAll('button')[1].click()
+      nav.querySelectorAll('.player-bar-entry')[1].click()
       expect(isOpen()).toBe(true)
     })
 
@@ -297,6 +308,66 @@ describe('installPlayerBar', () => {
       expect(isOpen()).toBe(false)
       expect(document.body.classList.contains('has-own-board')).toBe(false)
     })
+  })
+
+  describe('the ☰ menu', () => {
+    const game = [{ role: 'own', name: 'Ann', turn: 'attacker' }, { role: 'target', name: 'Bob' }]
+    const menuButton = nav => nav.querySelector('.player-bar-menu')
+    const panel = nav => nav.querySelector('.player-bar-panel')
+
+    test('is at the end of the bar, and opens its panel', async () => {
+      const { nav } = await setUp(game)
+      expect(nav.lastElementChild).toBe(menuButton(nav))
+      menuButton(nav).click()
+      expect(panel(nav).hidden).toBe(false)
+    })
+
+    test('Escape closes it and puts focus back on the ☰ button', async () => {
+      const { nav } = await setUp(game)
+      menuButton(nav).click()
+      document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }))
+      expect(panel(nav).hidden).toBe(true)
+      expect(document.activeElement).toBe(menuButton(nav))
+    })
+
+    test('a tap outside only closes it: it never reaches the board underneath', async () => {
+      const { main, nav } = await setUp(game)
+      const board = main.querySelector('.role-target .matrix')
+      const shot = jest.fn()
+      board.addEventListener('click', shot)
+      menuButton(nav).click()
+      board.click()
+      expect(panel(nav).hidden).toBe(true)
+      expect(shot).not.toHaveBeenCalled()
+    })
+
+    test('closes when the game ends', async () => {
+      const { main, nav } = await setUp(game)
+      menuButton(nav).click()
+      renderGame(main, [{ role: 'own', name: 'Ann', turn: 'winner' }, { role: 'summary', name: 'Bob', status: 0 }])
+      await nextFrame()
+      expect(panel(nav).hidden).toBe(true)
+    })
+  })
+
+  test('tells the game when the own board is open (OWN_BOARD_EVENT): a docked board on a wide screen is', async () => {
+    const told = []
+    const main = document.createElement('main')
+    main.addEventListener(OWN_BOARD_EVENT, event => told.push(event.detail.open))
+    main.className = 'game'
+    document.body.append(main)
+    renderGame(main, [{ role: 'own', name: 'Ann', turn: 'attacker' }, { role: 'target', name: 'Bob' }])
+    removeBar = installPlayerBar(main)
+    await nextFrame()
+    expect(told).toEqual([true])
+    // The next player's turn (local multiplayer): told afresh for their board
+    renderGame(main, [{ role: 'target', name: 'Ann' }, { role: 'own', name: 'Bob', turn: 'attacker' }])
+    await nextFrame()
+    expect(told).toEqual([true, true])
+    // The game ends: closed
+    renderGame(main, [{ role: 'own', name: 'Ann', turn: 'winner' }, { role: 'summary', name: 'Bob', status: 0 }])
+    await nextFrame()
+    expect(told).toEqual([true, true, false])
   })
 
   test('has-own-board while playing with an own board (wide screens dock it apart), not in robots only', async () => {
