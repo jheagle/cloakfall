@@ -70,7 +70,7 @@ slices need a human visual review: screenshots at phone and desktop widths in ev
   Skill: ui. (notes [3])
 - [ ] **4d. Game menu.** Quit (to the main menu), Restart (every player; host only online), Return to lobby (online
   only). Confirm before Quit/Restart. Home for 5's countdown option and 7's robot speed. Skill: ui + logic. (notes [3])
-  - Split (2026-11-17): **4d-1** the "Game" section: local Restart + Quit, online Leave (everyone; for the host it
+  - Split (2026-11-17): **4d-1** (done, #190) the "Game" section: local Restart + Quit, online Leave (everyone; for the host it
     ends the game for everyone, as leaving does today). **4d-2** online Restart and Return to lobby for the host:
     the server has no mid-game "end and go back to the waiting room" or restart yet (startGame refuses while a game
     runs).
@@ -96,6 +96,15 @@ slices need a human visual review: screenshots at phone and desktop widths in ev
   in the drawer, so nobody sees it by accident), and the option goes away; local multiplayer keeps hiding them until
   you open your drawer on your own turn.
 - **4c/4d: one ☰ button with two sections** (decided 2026-11-17): "My controls" then "Game".
+
+## To discuss after this round (user, 2026-11-17)
+
+- **Your own stats without opening the drawer.** Players want to see at a glance whether they were hit and how close
+  they are to losing; today that means opening the drawer often. The user's idea: white text with a slight shadow in a
+  corner of the screen, over the game (concern: it may get in the way of playing). Already there: your bar entry shows
+  your overall status ("You 84%"), and slice 6 can make a hit on your board noticeable (e.g. your entry flashes).
+  Options to weigh then: the corner overlay (small, fades after a hit, never over the target board?), per-ship pips in
+  your bar entry, or a long-press on your entry for a quick peek.
 
 ## Out of scope (found along the way)
 
