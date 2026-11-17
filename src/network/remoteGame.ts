@@ -1,6 +1,6 @@
 import treeloom from 'treeloom'
 import treeloomMatrix from 'treeloom-matrix'
-import { onGameUpdate, sendGameAction } from './lobbySocket'
+import { offGameUpdate, onGameUpdate, sendGameAction } from './lobbySocket'
 import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { Point } from 'treeloom-matrix/dist/point/types'
 import type { Board } from '../types'
@@ -294,6 +294,7 @@ export const enterRemoteGame = (root: DomItemRoot, firstUpdate: RedactedBody): v
 
 /** Stop forwarding and clear whatever the remote game last rendered, so the root can go back to running locally. */
 export const leaveRemoteGame = (root: DomItemRoot): void => {
+  offGameUpdate()
   stopForwarding(root)
   clearChildren(root.body)
   fullRenderForwarding.delete(root)
