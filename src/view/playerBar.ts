@@ -169,30 +169,47 @@ const setText = (element: Element, text: string): void => {
   }
 }
 
+/** What a tap on an entry does: show that opponent's board, or open/close (or go to) the viewer's own board. */
+interface BarActions {
+  choose: (index: number) => void
+  toggleOwn: () => void
+}
+
 /**
- * One entry's elements: a button for an opponent, plain text for the viewer's own entry; name, status and a "firing"
- * marker (shown only on the attacker's entry). Built once per player and then updated in place (updateEntry).
+ * One entry's elements: a button with the player's name, status and a "firing" marker (shown only on the attacker's
+ * entry). An opponent's shows their board; the viewer's own opens their board's drawer on a phone. Built once per
+ * player and then updated in place (updateEntry).
  * @param player
- * @param choose
+ * @param actions
  */
-const createEntry = (player: BarPlayer, choose: (index: number) => void): HTMLLIElement => {
+const createEntry = (player: BarPlayer, actions: BarActions): HTMLLIElement => {
   const item = document.createElement('li')
   item.dataset.index = String(player.index)
   item.dataset.own = String(player.own)
-  const entry = document.createElement(player.own ? 'span' : 'button')
-  entry.className = 'player-bar-entry'
+  const entry = document.createElement('button')
+  entry.type = 'button'
+  entry.className = player.own ? 'player-bar-entry is-own' : 'player-bar-entry'
   for (const part of ['name', 'status', 'turn']) {
     const span = document.createElement('span')
     span.className = `player-bar-${part}`
     entry.append(span)
   }
   setText(entry.lastElementChild!, 'firing')
-  if (entry instanceof HTMLButtonElement) {
-    entry.type = 'button'
-    entry.addEventListener('click', () => choose(player.index))
-  }
+  entry.addEventListener('click', () => player.own ? actions.toggleOwn() : actions.choose(player.index))
   item.append(entry)
   return item
+}
+
+/** Set an attribute only when it differs (or remove it, for null). */
+const setAttribute = (element: Element, name: string, value: string | null): void => {
+  if (element.getAttribute(name) === value) {
+    return
+  }
+  if (value === null) {
+    element.removeAttribute(name)
+  } else {
+    element.setAttribute(name, value)
+  }
 }
 
 /**
@@ -200,8 +217,9 @@ const createEntry = (player: BarPlayer, choose: (index: number) => void): HTMLLI
  * @param item
  * @param player
  * @param shown
+ * @param ownOpen whether the viewer's own board's drawer is open, or null where there is no drawer (wide screens)
  */
-const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | null): void => {
+const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | null, ownOpen: boolean | null): void => {
   const entry = item.firstElementChild as HTMLElement
   const [name, status, turn] = Array.from(entry.children) as HTMLElement[]
   if (entry.style.getPropertyValue('--player-colour') !== player.colour) {
@@ -214,8 +232,10 @@ const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | nul
   if (turn.hidden !== (player.turn !== 'attacker')) {
     turn.hidden = player.turn !== 'attacker'
   }
-  if (entry instanceof HTMLButtonElement && entry.getAttribute('aria-pressed') !== String(player.index === shown)) {
-    entry.setAttribute('aria-pressed', String(player.index === shown))
+  if (player.own) {
+    setAttribute(entry, 'aria-expanded', ownOpen === null ? null : String(ownOpen))
+  } else {
+    setAttribute(entry, 'aria-pressed', String(player.index === shown))
   }
 }
 
@@ -226,20 +246,27 @@ const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | nul
  * @param list
  * @param players
  * @param shown
- * @param choose
+ * @param ownOpen
+ * @param actions
  */
-const renderBar = (list: HTMLElement, players: BarPlayer[], shown: number | null, choose: (index: number) => void): void => {
+const renderBar = (list: HTMLElement, players: BarPlayer[], shown: number | null, ownOpen: boolean | null, actions: BarActions): void => {
   const items = Array.from(list.children) as HTMLLIElement[]
   const same = items.length === players.length &&
     players.every((player, i) => items[i].dataset.index === String(player.index) && items[i].dataset.own === String(player.own))
   if (!same) {
-    list.replaceChildren(...players.map(player => createEntry(player, choose)))
+    list.replaceChildren(...players.map(player => createEntry(player, actions)))
   }
-  players.forEach((player, i) => updateEntry(list.children[i] as HTMLLIElement, player, shown))
+  players.forEach((player, i) => updateEntry(list.children[i] as HTMLLIElement, player, shown, ownOpen))
 }
 
 /**
  * Add the player bar to the page and keep it in step with <main>. Returns a function that removes it again.
+ *
+ * On a phone it also opens and closes the drawer the viewer's own board lives in (the CSS in layouts-custom.sass
+ * moves the role-own board into it, and dims the page around it): body.own-board-open. It closes on Escape, on a tap
+ * outside it, when the game ends, and when the board it shows stops being the viewer's (local multiplayer: every
+ * turn, so nobody sees another player's ships by accident). A tap outside only closes it: it never reaches the board
+ * underneath, so closing the drawer can't fire a shot.
  * @param main the game's <main> (setup/gameRoot.ts)
  */
 export const installPlayerBar = (main: HTMLElement): (() => void) => {
@@ -252,6 +279,9 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
   nav.append(list)
   const style = doc.createElement('style')
   main.after(nav, style)
+  const view = doc.defaultView
+  // No matchMedia (some test DOMs): treated as a wide screen, so no drawer
+  const narrow = view?.matchMedia?.(`(max-width: ${ONE_BOARD_MAX_WIDTH_PX}px)`) ?? null
 
   let state = initialBarState()
   let frame: number | null = null
@@ -260,11 +290,32 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
   let rendered = ''
   let playing = false
   let players: BarPlayer[] = []
+  let drawerOpen = false
+  let ownId: string | null = null
+
+  /** Open or close the own board's drawer (a no-op when it is already that way). */
+  const setDrawer = (open: boolean): void => {
+    if (drawerOpen === open) {
+      return
+    }
+    drawerOpen = open
+    doc.body.classList.toggle('own-board-open', open)
+    rendered = ''
+    schedule()
+  }
 
   const refresh = (): void => {
     frame = null
     players = readPlayers(main)
     playing = inPlay(players, playing)
+    const ownNow = players.find(player => player.own)?.id ?? null
+    if (!playing || ownNow !== ownId) {
+      setDrawer(false)
+    }
+    ownId = ownNow
+    // Wide screens dock the viewer's own board in a column of its own, apart from the opponents' boards
+    // (layouts-custom.sass); robots-only has no own board, so the opponents keep the whole width
+    doc.body.classList.toggle('has-own-board', playing && ownNow !== null)
     if (!playing) {
       state = initialBarState()
       rendered = ''
@@ -279,10 +330,11 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
     if (style.textContent !== css) {
       style.textContent = css
     }
-    const key = JSON.stringify([shown, players.map(({ shots, id, ...shownFacts }) => shownFacts)])
+    const ownOpen = narrow?.matches ? drawerOpen : null
+    const key = JSON.stringify([shown, ownOpen, players.map(({ shots, id, ...shownFacts }) => shownFacts)])
     if (key !== rendered) {
       rendered = key
-      renderBar(list, players, shown, choose)
+      renderBar(list, players, shown, ownOpen, { choose, toggleOwn })
     }
     nav.hidden = false
     doc.body.classList.add('has-player-bar')
@@ -296,7 +348,44 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
     board?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
   }
 
-  const schedule = (): void => {
+  /** The viewer's own entry: open/close the drawer on a phone; on a wide screen the board is always there, so go to it. */
+  const toggleOwn = (): void => {
+    if (narrow?.matches) {
+      setDrawer(!drawerOpen)
+      return
+    }
+    main.querySelector(':scope > .boards > .role-own')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }
+
+  const onKey = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape' && drawerOpen) {
+      setDrawer(false)
+      nav.querySelector<HTMLElement>('.is-own')?.focus()
+    }
+  }
+  // In the capture phase, before any listener in the game (a shot) sees the tap. The bar is left alone: its own
+  // entry toggles the drawer, and the others switch boards behind it.
+  const onOutsideTap = (event: Event): void => {
+    const target = event.target as Node | null
+    const ownBoard = main.querySelector(':scope > .boards > .role-own')
+    if (!drawerOpen || !target || nav.contains(target) || ownBoard?.contains(target)) {
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    setDrawer(false)
+  }
+  // Growing past phone width: the board is back on the page, so the drawer state no longer applies
+  const onWidth = (): void => {
+    setDrawer(false)
+    rendered = ''
+    schedule()
+  }
+  doc.addEventListener('keydown', onKey)
+  doc.addEventListener('click', onOutsideTap, true)
+  narrow?.addEventListener?.('change', onWidth)
+
+  function schedule (): void {
     if (frame === null) {
       frame = requestAnimationFrame(refresh)
     }
@@ -307,6 +396,10 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
 
   return () => {
     observer.disconnect()
+    doc.removeEventListener('keydown', onKey)
+    doc.removeEventListener('click', onOutsideTap, true)
+    narrow?.removeEventListener?.('change', onWidth)
+    doc.body.classList.remove('own-board-open', 'has-own-board')
     if (frame !== null) {
       cancelAnimationFrame(frame)
     }
