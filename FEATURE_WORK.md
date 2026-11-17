@@ -14,6 +14,8 @@ stacked: about 1,650 px of scrolling on an 844 px screen, so you scroll to find 
   (a 10x10 board at ~32 px cells is about what a 390 px phone fits, and what a thumb can hit). The stats bar lists
   every player; tap an opponent to switch to their board. Wide screens show every target side by side instead.
 - **Your own board goes in a drawer** that slides in and out (on a phone it's never on screen next to a target).
+- **Wide screens: your own board is apart from the opponents' boards** (2026-11-17): docked in a column of its own,
+  not in the same group.
 - **"Show my ships" and "sensor scan" are in-game options** in the player's control panel, not pre-game settings
   (2026-11-12).
 - **Restart is a game-menu option for every player**; in online games it is the host's (2026-11-12).
@@ -57,7 +59,7 @@ slices need a human visual review: screenshots at phone and desktop widths in ev
   viewer; the first target is the next one alive). Wide screens: all targets side by side, the bar still shows
   stats. Replaces the per-board stats lists on the phone. Skill: ui/css + logic. (notes [3][6])
 - [ ] **4b. Own-board drawer.** Your own board (and your fleet list) slides in from the side or bottom and out
-  again; closed by default on a phone, open on wide screens. Local multiplayer: closed at the start of every turn
+  again; closed by default on a phone; on wide screens docked in a column of its own, apart from the opponents. Local multiplayer: closed at the start of every turn
   (players never see each other's placement by accident). Skill: ui/css. (notes [3][6])
 - [ ] **3. Highlight only the current attacker; drop the coloured board borders.** Removes the robots'
   `displayTargets`/`resetTargets` border painting (most of the ~2,400 style writes per shot measured in the treeloom
