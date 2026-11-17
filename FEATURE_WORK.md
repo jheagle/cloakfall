@@ -61,7 +61,7 @@ slices need a human visual review: screenshots at phone and desktop widths in ev
 - [x] **4b. Own-board drawer.** (#187) Your own board (and your fleet list) slides in from the side or bottom and out
   again; closed by default on a phone; on wide screens docked in a column of its own, apart from the opponents. Local multiplayer: closed at the start of every turn
   (players never see each other's placement by accident). Skill: ui/css. (notes [3][6])
-- [ ] **3. Highlight only the current attacker; drop the coloured board borders.** Removes the robots'
+- [x] **3. Highlight only the current attacker; drop the coloured board borders.** (#188) Removes the robots'
   `displayTargets`/`resetTargets` border painting (most of the ~2,400 style writes per shot measured in the treeloom
   work, so faster too). Also makes the sensor-scan heat map show only to the player who turned it on (today
   everyone sees it during that player's turn; public information only, found in CLOA-14). Skill: ui + logic. (notes [2])
@@ -88,11 +88,10 @@ slices need a human visual review: screenshots at phone and desktop widths in ev
   the board being fired at)? Suggested: follow the action, and go back to your choice when your turn starts. Slice 6
   covers the moment of the hit.
 - **4b: drawer from the side or from the bottom?** Suggested: from the side on phones, so the stats bar stays put.
-- **4c: "Show my ships"**: the 2026-11-12 notes say both "always on in online and single-player (the board itself
-  can be hidden)" and "an option in the in-game menu". Suggested: your ships always show on your own board (it's in
-  the drawer, so nobody sees it by accident), and the option goes away; local multiplayer keeps hiding them until
+- **4c: "Show my ships"** (decided 2026-11-17, the suggested default): your ships always show on your own board (it's
+  in the drawer, so nobody sees it by accident), and the option goes away; local multiplayer keeps hiding them until
   you open your drawer on your own turn.
-- **4c/4d: one ☰ button with two sections, or two buttons?** Suggested: one button, "My controls" then "Game".
+- **4c/4d: one ☰ button with two sections** (decided 2026-11-17): "My controls" then "Game".
 
 ## Out of scope (found along the way)
 
