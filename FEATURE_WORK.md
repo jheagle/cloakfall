@@ -70,6 +70,10 @@ slices need a human visual review: screenshots at phone and desktop widths in ev
   Skill: ui. (notes [3])
 - [ ] **4d. Game menu.** Quit (to the main menu), Restart (every player; host only online), Return to lobby (online
   only). Confirm before Quit/Restart. Home for 5's countdown option and 7's robot speed. Skill: ui + logic. (notes [3])
+  - Split (2026-11-17): **4d-1** the "Game" section: local Restart + Quit, online Leave (everyone; for the host it
+    ends the game for everyone, as leaving does today). **4d-2** online Restart and Return to lobby for the host:
+    the server has no mid-game "end and go back to the waiting room" or restart yet (startGame refuses while a game
+    runs).
 - [ ] **5. Turn banner (local multiplayer first).** Slides across the top: whose turn, "waiting for [player] to
   attack", and the countdown when the game-menu option is on (local games have no turn timer today; online has
   20 s). Sensor scan moves off the board into the turn's controls. Skill: ui + logic. (notes [5])
