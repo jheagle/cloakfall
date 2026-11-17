@@ -4,7 +4,7 @@ import { bestTargets, hitChances, scoreTargets } from './densityScores'
 import type { Cell, ShotState } from './densityScores'
 import filterAdjacentPoints from '../utils/filterAdjacentPoints'
 import type { Player } from '../types'
-import type { HeatCell } from './resetTargets'
+import type { HeatCell } from './heatCell'
 import type { Point } from 'treeloom-matrix/dist/point/types'
 
 const toCell = (point: { x: number, y: number }): Cell => ({ x: point.x, y: point.y })

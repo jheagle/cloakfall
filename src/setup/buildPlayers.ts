@@ -25,10 +25,8 @@ const buildPlayers = (humans: number, root: DomItem, robots: number = 0, players
   }
   const player = playerSet({}, `Player ${players.length + 1}`)
   player.isRobot = humans <= 0
-  // Used for the attack-target glow (updatePlayer.ts), the player's own name in their stats panel
-  // (playerStats.ts), and the robot-targeting highlight animation (resetTargets.ts) - no longer for the
-  // player panel's own border, which got busy once the own/target/summary role layout gave each panel a much
-  // clearer visual distinction of its own.
+  // Used for the player's own name in their stats panel (playerStats.ts) and their entry in the player bar
+  // (view/playerBar.ts) - no longer for any border or glow: only the current attacker is highlighted (updatePlayer.ts).
   player.colour = playerColour(players.length)
   // square() takes single objects here (treeloom-matrix's JSDoc says arrays, but arrays get merged in under a '0' key).
   // navigableGrid makes the board an ARIA grid with keyboard navigation (arrows, Home / End, Enter or Space to click

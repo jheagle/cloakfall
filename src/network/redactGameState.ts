@@ -9,6 +9,22 @@ import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { Board, Player, Ship, Tile } from '../types'
 
 /**
+ * Take the sensor scan's shading (attack/heatHint.ts: each cell's border colour) off a board clone, for every viewer
+ * but the attacker who switched it on. The scan only uses what everyone can see, so this hides nothing secret: it
+ * keeps one player's hint, and its noise, off everyone else's screen.
+ * @param board a clone, changed in place
+ */
+export const removeHeatShading = (board: Board): Board => {
+  treeloomMatrix.getLayerPoints(board, 0).forEach(point => {
+    const style = ((treeloomMatrix.getDomItemFromPoint(point, board) as Tile).attributes as { style?: { borderColor?: string } } | undefined)?.style
+    if (style) {
+      delete style.borderColor
+    }
+  })
+  return board
+}
+
+/**
  * A redacted clone of a board: every tile is kept (same count, same tree position - nothing is removed, so it
  * stays renderable and clickable exactly like a local board), but hasShip is set to false on any tile that is
  * neither hit nor on the viewer's own board. Which cells to redact is read from the real board, matching the
@@ -91,7 +107,7 @@ const hidePlayerControls = (stats: DomItem): DomItem => ({
 
 /**
  * One player, redacted for a given viewer: a clone of the real player, with its board and fleet redacted per
- * redactBoard/redactShip, its own placement panel disabled, and its own hint checkbox removed entirely, all
+ * redactBoard/redactShip (and the sensor scan's shading removed unless the viewer is the attacker who has it on), its own placement panel disabled, and its own hint checkbox removed entirely, all
  * unless this is that player's own viewer. Everything else (name, colour, robot/human, overall status, whose
  * turn it is) passes through unchanged. children is kept in step with whichever of its own entries changed, by
  * index, rather than assumed to always be exactly [turn-badge, board, stats] - a remote game's own fourth
@@ -103,6 +119,10 @@ export const redactPlayer = (player: Player, viewer: Player): Player => {
   const clone = siFunciona.cloneObject(player) as Player
   const boardIndex = clone.children.indexOf(clone.board)
   clone.board = redactBoard(player.board, player === viewer)
+  // The sensor scan's shading is for the attacker who switched it on, during their turn (heatHint.ts)
+  if (!(viewer.attacker && viewer.showHint)) {
+    removeHeatShading(clone.board)
+  }
   if (boardIndex !== -1) {
     clone.children[boardIndex] = clone.board
   }
