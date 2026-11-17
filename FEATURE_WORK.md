@@ -52,7 +52,7 @@ Order: the stats bar and the drawer first (they fix the phone), then the rest. S
 testable, and stay reserved for the role-based agents (task-manager queue) unless they fit naturally. The layout
 slices need a human visual review: screenshots at phone and desktop widths in every PR.
 
-- [ ] **4a. Stats bar + one target at a time.** Fixed bar at the bottom: every player's name, colour, % left and
+- [x] **4a. Stats bar + one target at a time.** (#186) Fixed bar at the bottom: every player's name, colour, % left and
   turn marker; tapping an opponent shows their board in the main area (the attacker's current choice is kept per
   viewer; the first target is the next one alive). Wide screens: all targets side by side, the bar still shows
   stats. Replaces the per-board stats lists on the phone. Skill: ui/css + logic. (notes [3][6])
