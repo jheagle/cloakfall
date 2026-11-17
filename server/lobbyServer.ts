@@ -5,12 +5,15 @@ import { Server, Socket } from 'socket.io'
 import { startRoomGame, watchRoomGame } from './gameplay'
 import { forTransport } from './transport'
 import { cleanGameAction, cleanName, isHintSetting, isRecord, MAX_LOBBY_NAME, MAX_PLAYER_NAME } from './validate'
+import { clientAddress, createFailureCounter, createRateLimiter, DEFAULT_LIMITS, settingsFromEnv } from './limits'
+import { version } from '../src/version'
 import { isHostOnlyStage, isRemoteSessionActive, remotePlacementStage } from '../src/setup/remotePlacement'
 import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'http'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { ForwardedEvent } from 'treeloom/dist/events/types'
 import type { HintSetting } from '../src/setup/gameOptions'
 import type { RoomGame } from './gameplay'
+import type { LobbyLimits } from './limits'
 
 /** The fewest players a game can start with - nobody to attack otherwise. */
 const MIN_PLAYERS_TO_START = 2
@@ -52,6 +55,8 @@ interface Room {
   players: Map<string, string>
   game?: RoomGame
   broadcastGame?: () => void
+  /** When anyone in the room last sent anything, or its game last pushed an update (Date.now()). */
+  lastActivity: number
 }
 
 /**
@@ -143,31 +148,149 @@ const on = (socket: Socket, event: string, handler: (payload: Record<string, unk
 /** The answer for a name that is missing or too long. */
 const NAME_ERRORS = ['A name is required', `Names can be up to ${MAX_PLAYER_NAME} characters`] as const
 
+/** How often idle rooms and old failed lookups are cleared out (ms), or every roomIdleMs if that is shorter. */
+const SWEEP_INTERVAL_MS = 60 * 1000
+
+/** What a lobby server can be started with; everything has a default. */
+export interface LobbyOptions {
+  /** Changes to DEFAULT_LIMITS (see limits.ts). */
+  limits?: Partial<LobbyLimits>
+  /** Page origins allowed to connect (e.g. https://joshuaheagle.com); empty or missing allows any. A connection
+   * that says no origin at all (not a browser) is allowed either way: this stops other sites from using the lobby
+   * from their pages, it isn't authentication. */
+  origins?: string[]
+}
+
 /**
  * The remote lobby: players create or join a room by a short code, and see who else is in it as they join or
  * leave. This is hosting, joining and presence only - nothing about actual gameplay is wired up here.
  *
  * If the host disconnects, the room closes for everyone rather than picking a new host - simplest for a first
  * version; worth revisiting if a host leaving mid-session turns out to be disruptive in practice.
+ *
+ * Limits (limits.ts, hardening H3/H4/H5): connections per network address, messages per connection (a token
+ * bucket; a connection that keeps going after being refused is closed), the largest message, rooms open at once,
+ * one room per connection, failed room-code lookups per address (so codes can't be scanned), and idle rooms closed.
+ * @param options
  */
-export const createLobbyServer = (): HttpServer => {
+export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
+  const limits: LobbyLimits = { ...DEFAULT_LIMITS, ...options.limits }
+  const origins = options.origins ?? []
   const startedAt = new Date()
   const rooms = new Map<string, Room>()
+  const connectionsByAddress = new Map<string, number>()
+  const failedLookups = createFailureCounter(limits.maxFailedLookups, limits.failedLookupWindowMs)
   const httpServer: HttpServer = createServer(httpHandler(() => ({
     service: 'cloakfall-lobby',
     status: 'up',
-    // Set when started through npm (npm run serve:lobby); a host that runs node directly can set it too.
-    version: process.env.npm_package_version ?? 'unknown',
+    version,
     startedAt: startedAt.toISOString(),
     uptimeSeconds: Math.floor((Date.now() - startedAt.getTime()) / 1000),
     rooms: rooms.size,
     games: [...rooms.values()].filter(room => room.game && !isRoomGameOver(room.game)).length,
     players: io.engine.clientsCount
   })))
-  const io: Server = new Server(httpServer, { cors: { origin: '*' } })
+  const io: Server = new Server(httpServer, {
+    maxHttpBufferSize: limits.maxMessageBytes,
+    cors: { origin: origins.length ? origins : '*' },
+    // CORS alone only covers the polling transport: browsers don't apply it to WebSockets, so check the Origin
+    // header on every handshake too.
+    allowRequest: (request, callback) => {
+      const origin = request.headers.origin
+      callback(null, !origins.length || origin === undefined || origins.includes(origin))
+    }
+  })
+
+  /**
+   * Close a room for everyone in it: stop its game (so no timer keeps playing it) and forget it.
+   * @param roomCode
+   */
+  const closeRoom = (roomCode: string): void => {
+    const room = rooms.get(roomCode)
+    if (!room) {
+      return
+    }
+    room.game?.stop()
+    room.broadcastGame = undefined
+    rooms.delete(roomCode)
+    io.to(roomCode).emit('roomClosed')
+    io.in(roomCode).socketsLeave(roomCode)
+  }
+
+  const sweep = setInterval(() => {
+    const idleSince = Date.now() - limits.roomIdleMs
+    rooms.forEach((room, roomCode) => {
+      if (room.lastActivity < idleSince) {
+        closeRoom(roomCode)
+      }
+    })
+    failedLookups.sweep()
+  }, Math.min(SWEEP_INTERVAL_MS, limits.roomIdleMs))
+  // unref so the sweep never keeps the process (or a test) alive on its own; optional for jsdom test runs.
+  ;(sweep as { unref?: () => void }).unref?.()
+  httpServer.on('close', () => clearInterval(sweep))
+
+  // Connections per network address, counted from the handshake to the disconnect.
+  io.use((socket, next) => {
+    const address = clientAddress(socket, limits.trustProxy)
+    const count = connectionsByAddress.get(address) ?? 0
+    if (count >= limits.maxConnectionsPerAddress) {
+      next(new Error('Too many connections from your network, please close some tabs and try again'))
+      return
+    }
+    connectionsByAddress.set(address, count + 1)
+    socket.data.address = address
+    socket.on('disconnect', () => {
+      const left = (connectionsByAddress.get(address) ?? 1) - 1
+      if (left > 0) {
+        connectionsByAddress.set(address, left)
+      } else {
+        connectionsByAddress.delete(address)
+      }
+    })
+    next()
+  })
 
   io.on('connection', (socket: Socket) => {
     let currentRoom: string | null = null
+    const address: string = socket.data.address
+    const inRoom = (): boolean => currentRoom !== null && rooms.has(currentRoom)
+
+    // Messages per connection: one that comes too fast is answered with an error (if it asked for an answer) and
+    // dropped, and a connection that keeps going after many refusals is closed.
+    const bucket = createRateLimiter(limits.messagesPerSecond, limits.messageBurst)
+    let refused = 0
+    socket.use((packet, next) => {
+      if (bucket.take()) {
+        const room = currentRoom ? rooms.get(currentRoom) : undefined
+        if (room) {
+          room.lastActivity = Date.now()
+        }
+        next()
+        return
+      }
+      refused += 1
+      const ack = packet[packet.length - 1]
+      if (typeof ack === 'function') {
+        ack({ error: 'Too many messages, please slow down' })
+      }
+      if (refused >= limits.maxRefusedMessages) {
+        socket.disconnect(true)
+      }
+    })
+
+    /**
+     * Whether this address has failed too many room-code lookups lately; answers the caller if so. Checked before
+     * looking the code up at all, so a blocked scanner learns nothing, not even from a real code.
+     * @param ack
+     */
+    const lookupsBlocked = (ack: Ack): boolean => {
+      if (!failedLookups.blocked(address)) {
+        return false
+      }
+      ack({ error: 'Too many tries with codes that don\'t exist, please wait a few minutes' })
+      return true
+    }
 
     on(socket, 'createRoom', (payload, ack) => {
       const name = cleanName(payload.name, MAX_PLAYER_NAME, ...NAME_ERRORS)
@@ -180,8 +303,16 @@ export const createLobbyServer = (): HttpServer => {
         ack(roomName)
         return
       }
+      if (inRoom()) {
+        ack({ error: 'Already in a room' })
+        return
+      }
+      if (rooms.size >= limits.maxRooms) {
+        ack({ error: 'The lobby is full right now, please try again in a few minutes' })
+        return
+      }
       const roomCode = generateRoomCode(rooms)
-      rooms.set(roomCode, { roomName: roomName.name, hostId: socket.id, players: new Map([[socket.id, name.name]]) })
+      rooms.set(roomCode, { roomName: roomName.name, hostId: socket.id, players: new Map([[socket.id, name.name]]), lastActivity: Date.now() })
       currentRoom = roomCode
       socket.join(roomCode)
       ack(roomState(rooms, roomCode))
@@ -190,8 +321,12 @@ export const createLobbyServer = (): HttpServer => {
     // A read-only lookup, callable before the caller has even entered their own name or joined anything - lets
     // a joiner see whose lobby it is (see mainMenu.ts's remote-join-confirm) before they commit to anything.
     on(socket, 'peekRoom', ({ roomCode }, ack) => {
+      if (lookupsBlocked(ack)) {
+        return
+      }
       const room = typeof roomCode === 'string' ? rooms.get(roomCode) : undefined
       if (!room) {
+        failedLookups.fail(address)
         ack({ error: 'No room with that code' })
         return
       }
@@ -204,9 +339,17 @@ export const createLobbyServer = (): HttpServer => {
         ack(name)
         return
       }
+      if (inRoom()) {
+        ack({ error: 'Already in a room' })
+        return
+      }
+      if (lookupsBlocked(ack)) {
+        return
+      }
       const roomCode = typeof payload.roomCode === 'string' ? payload.roomCode : ''
       const room = rooms.get(roomCode)
       if (!room) {
+        failedLookups.fail(address)
         ack({ error: 'No room with that code' })
         return
       }
@@ -258,7 +401,10 @@ export const createLobbyServer = (): HttpServer => {
       // fire for a good two minutes, long after the very next line assigns it, so the closure below still reads
       // the real function by the time it's ever actually called.
       room.game = startRoomGame([...room.players.entries()], hints, () => room.broadcastGame?.(), robots as number)
-      room.broadcastGame = watchRoomGame(room.game, (socketId, redactedBody) => io.to(socketId).emit('gameUpdate', forTransport(redactedBody)))
+      room.broadcastGame = watchRoomGame(room.game, (socketId, redactedBody) => {
+        room.lastActivity = Date.now()
+        io.to(socketId).emit('gameUpdate', forTransport(redactedBody))
+      })
       ack({ started: true })
     })
 
@@ -334,8 +480,7 @@ export const createLobbyServer = (): HttpServer => {
       }
       const room = rooms.get(currentRoom) as Room
       if (socket.id === room.hostId) {
-        io.to(currentRoom).emit('roomClosed')
-        rooms.delete(currentRoom)
+        closeRoom(currentRoom)
         return
       }
       room.players.delete(socket.id)
@@ -348,5 +493,8 @@ export const createLobbyServer = (): HttpServer => {
 
 if (process.argv[1] && process.argv[1].endsWith('lobbyServer.js')) {
   const port = process.env.PORT || 3002
-  createLobbyServer().listen(port, () => console.log(`cloakfall lobby server listening on port ${port}`))
+  const settings = settingsFromEnv(process.env)
+  createLobbyServer(settings).listen(port, () => console.log(`cloakfall lobby server ${version} listening on port ${port}` +
+    (settings.origins.length ? `, for ${settings.origins.join(', ')}` : ', for any origin') +
+    (settings.limits.trustProxy ? ', behind a proxy' : '')))
 }
