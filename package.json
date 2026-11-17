@@ -7,6 +7,7 @@
   "license": "ISC",
   "scripts": {
     "build": "gulp build",
+    "build:lobby": "tsc server/lobbyServer.ts --ignoreConfig --outDir dist/server --rootDir . --module commonjs --target es2020 --moduleResolution node --esModuleInterop --skipLibCheck --ignoreDeprecations 6.0",
     "dev": "gulp",
     "e2e": "npm run e2e:robots && npm run e2e:hotseat && npm run e2e:online",
     "e2e:hotseat": "node scripts/e2e/hotseat.mjs",
@@ -16,7 +17,7 @@
     "release": "release-it",
     "release:dry-run": "release-it --dry-run",
     "resolutions": "npx npm-force-resolutions",
-    "serve:lobby": "tsc server/lobbyServer.ts --ignoreConfig --outDir dist/server --rootDir . --module commonjs --target es2020 --moduleResolution node --esModuleInterop --skipLibCheck --ignoreDeprecations 6.0 && node dist/server/server/lobbyServer.js",
+    "serve:lobby": "npm run build:lobby && node dist/server/server/lobbyServer.js",
     "test": "gulp testFull",
     "test:quick": "gulp testQuick",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.type-tests.json",

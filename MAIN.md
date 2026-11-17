@@ -32,9 +32,33 @@ Online Multiplayer additionally needs the lobby server running:
 npm run serve:lobby
 ```
 
-This compiles and starts `server/lobbyServer.ts` on port 3002 (`src/network/lobbySocket.ts`'s own
-`DEFAULT_URL`). The page itself still needs to be served separately (same as local play) - this is
-just the socket.io server it talks to for room hosting/joining and the remote game itself.
+This compiles (`npm run build:lobby`) and starts `server/lobbyServer.ts` on port 3002. The page itself still needs to
+be served separately (same as local play) - this is just the socket.io server it talks to for room hosting/joining and
+the remote game itself. By default the page looks for it on port 3002 of the host it was loaded from (`lobbyUrl` in
+`src/network/lobbySocket.ts`), so another device on the same network can join: open the page from this machine's
+LAN address (e.g. `http://192.168.1.20:8080/`) on both, with ports 8080 and 3002 reachable from the network.
+
+A page served somewhere else can name a hosted lobby instead, with a meta tag in its `<head>`:
+
+```html
+<meta name="cloakfall-lobby" content="https://cloakfall.joshuaheagle.com">
+```
+
+The tag's value is used when it is an `http:` or `https:` URL (a trailing slash is dropped); anything else is ignored
+and the page falls back to its own host on port 3002. `status.html` follows the same rule, so it checks the same
+server. This repo's own `index.html` and `status.html` have no tag, for LAN and local play; the website's copy of the
+game adds it.
+
+## Running the lobby in Docker
+
+The `Dockerfile` builds an image with just the compiled lobby server and its production dependencies, running as the
+image's non-root `node` user on port 3002 (it writes nothing to disk, so it can run with a read-only filesystem):
+
+```
+docker build -t cloakfall-lobby .
+docker run --rm -p 3002:3002 cloakfall-lobby
+curl http://localhost:3002/status
+```
 
 ## Checking full games in a browser
 
