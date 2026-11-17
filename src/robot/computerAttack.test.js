@@ -4,7 +4,7 @@
 
 import { useGameLifecycle, startGame, settle, hitCells } from '../../tests/helpers/game'
 import getAttackLock from '../attack/attackLock'
-import computerAttack from './computerAttack'
+import computerAttack, { ROBOT_TURN_MS } from './computerAttack'
 import { buildShotState } from './densityTargets'
 import { bestTargets, scoreTargets } from './densityScores'
 
@@ -125,16 +125,18 @@ describe('the robot\'s targeting', () => {
     }
   })
 
-  test('it shows its thinking before the shot: one board is outlined, and nothing is hit until it is shown', async () => {
+  test('it takes its turn before the shot, drawing nothing on the boards in the meantime', async () => {
     const { players, robot } = await setUp({ humans: 1, robots: 2 })
     const opponents = players.filter(player => player !== robot)
     const before = opponents.map(hitCells)
+    const painted = () => opponents.filter(player => Array.from(player.board.element.querySelectorAll('*')).some(element => element.style.borderColor))
     computerAttack(robot, players)
+    await settle(ROBOT_TURN_MS / 2)
     expect(opponents.flatMap((player, i) => newlyHit(player, before[i]))).toHaveLength(0)
-    await settle(500)
-    expect(opponents.filter(player => player.board.children[0].element.style.borderColor === 'red')).toHaveLength(1)
-    await settle(1500)
+    expect(painted()).toHaveLength(0)
+    await settle(ROBOT_TURN_MS)
     expect(opponents.flatMap((player, i) => newlyHit(player, before[i]))).toHaveLength(1)
+    expect(painted()).toHaveLength(0)
     await settle(20000)
   })
 })

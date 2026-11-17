@@ -83,11 +83,10 @@ const updatePlayer = (player: Player, hitShip?: boolean, sunkShip: number = 0): 
   } else {
     queueTimeout(player, () => { attackLock.isLocked = false }, 0)
   }
-  // Every board keeps its size. The player whose turn it is is marked with a yellow outline on their panel. The players
-  // they can attack glow in that player's colour, so the target is clear
+  // Only the player whose turn it is is highlighted: a yellow outline on their panel (and "firing" in the player bar).
+  // The boards they can attack are not marked any more: the player bar shows one at a time on a phone
   queueTimeout(player, () => {
     treeloom.updateElement(siFunciona.mergeObjectsMutable(player, { attributes: { style: { outline: player.attacker ? '3px solid yellow' : 'none' } } }) as DomItem)
-    victimsOf(player).forEach(victim => treeloom.updateElement(siFunciona.mergeObjectsMutable(victim, { attributes: { style: { boxShadow: player.attacker ? `0 0 0 6px ${player.colour}` : 'none' } } }) as DomItem))
   }, 0)
   queueTimeout(player, () => updatePlayerStats(player, player.attacker ? 'ATTACKER' : `${Math.round(player.status * 100) / 100}%`), 0)
   return player
