@@ -4,6 +4,7 @@
 
 import { useGameLifecycle, startGame, settle, click, unhitWaterCells } from '../../tests/helpers/game'
 import getAttackLock from './attackLock'
+import { HIT_PAUSE_MS } from './updateScore'
 import { applyLocalPlayerView } from './localPlayerView'
 
 useGameLifecycle()
@@ -67,11 +68,15 @@ describe('hot-seat mode: "own" follows whoever currently has the turn', () => {
     expect(classNameOf(p2)).toBe('player role-target')
   })
 
-  test('role-own moves to the next player once the turn passes', async () => {
+  test('role-own moves to the next player once the turn passes (after the pause that shows where the shot landed)', async () => {
     const { players: [p1, p2] } = startGame({ humans: 2, firstGoesFirst: true })
     await settle()
     getAttackLock(p1).isLocked = false
     await click(unhitWaterCells(p2)[0], 100)
+    // Still the shooter's view while the shot's result shows (updateScore's HIT_PAUSE_MS)
+    expect(p1.attacker).toBe(true)
+    expect(classNameOf(p1)).toBe('player role-own')
+    await settle(HIT_PAUSE_MS)
     expect(p2.attacker).toBe(true)
     expect(classNameOf(p2)).toBe('player role-own')
     expect(classNameOf(p1)).toBe('player role-target')

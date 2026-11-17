@@ -504,3 +504,35 @@ body.has-turn-banner main.game > .boards
   body.has-turn-banner.has-own-board main.game > .boards > .player.role-own
     top: 6.5rem
     max-height: calc(100vh - 15.5rem)
+
+// A shot that just landed on a player's board (src/view/shotWatcher.ts): their entry says so for a moment. A hit
+// stands out (on the viewer's own entry most of all); a miss is quieter.
+.player-bar
+  .player-bar-alert
+    font-size: 1.2rem
+    font-weight: 700
+    text-transform: uppercase
+
+    &:empty
+      display: none
+
+  .player-bar-entry.was-hit
+    border-color: #ff8a3d
+    animation: player-bar-hit 600ms ease-out 2
+
+    .player-bar-alert
+      color: #ff8a3d
+
+  .player-bar-entry.was-missed .player-bar-alert
+    color: #9aa4bd
+
+  .player-bar-entry.is-own.was-hit
+    background-color: #4a2410
+
+@keyframes player-bar-hit
+  50%
+    box-shadow: 0 0 1.2rem .4rem rgba(255, 138, 61, .65)
+
+@media (prefers-reduced-motion: reduce)
+  .player-bar .player-bar-entry.was-hit
+    animation: none

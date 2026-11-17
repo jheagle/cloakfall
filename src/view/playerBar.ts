@@ -13,8 +13,12 @@
 /** Wider than this, every board is shown (side by side); narrower, one opponent at a time. */
 import createControlPanel from './controlPanel'
 import createTurnBanner from './turnBanner'
+import createShotWatcher, { flashShot } from './shotWatcher'
 
 export const ONE_BOARD_MAX_WIDTH_PX = 759
+
+/** How long a player's entry says "Hit" / "Miss" after a shot lands on their board. */
+export const SHOT_ALERT_MS = 2500
 
 /**
  * The event the bar sends on <main> when the viewer's own board opens or closes (detail: { open }): on a phone, its
@@ -199,12 +203,12 @@ const createEntry = (player: BarPlayer, actions: BarActions): HTMLLIElement => {
   const entry = document.createElement('button')
   entry.type = 'button'
   entry.className = player.own ? 'player-bar-entry is-own' : 'player-bar-entry'
-  for (const part of ['name', 'status', 'turn']) {
+  for (const part of ['name', 'status', 'turn', 'alert']) {
     const span = document.createElement('span')
     span.className = `player-bar-${part}`
     entry.append(span)
   }
-  setText(entry.lastElementChild!, 'firing')
+  setText(entry.querySelector('.player-bar-turn')!, 'firing')
   entry.addEventListener('click', () => player.own ? actions.toggleOwn() : actions.choose(player.index))
   item.append(entry)
   return item
@@ -228,10 +232,14 @@ const setAttribute = (element: Element, name: string, value: string | null): voi
  * @param player
  * @param shown
  * @param ownOpen whether the viewer's own board's drawer is open, or null where there is no drawer (wide screens)
+ * @param alert a shot that just landed on this player's board, shown for a moment ("Hit" / "Miss"), or undefined
  */
-const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | null, ownOpen: boolean | null): void => {
+const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | null, ownOpen: boolean | null, alert?: 'hit' | 'miss'): void => {
   const entry = item.firstElementChild as HTMLElement
-  const [name, status, turn] = Array.from(entry.children) as HTMLElement[]
+  const [name, status, turn, alertText] = Array.from(entry.children) as HTMLElement[]
+  entry.classList.toggle('was-hit', alert === 'hit')
+  entry.classList.toggle('was-missed', alert === 'miss')
+  setText(alertText, alert === 'hit' ? 'Hit' : alert === 'miss' ? 'Miss' : '')
   if (entry.style.getPropertyValue('--player-colour') !== player.colour) {
     entry.style.setProperty('--player-colour', player.colour)
   }
@@ -258,15 +266,16 @@ const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | nul
  * @param shown
  * @param ownOpen
  * @param actions
+ * @param alerts shots that just landed, by player id (shotWatcher.ts)
  */
-const renderBar = (list: HTMLElement, players: BarPlayer[], shown: number | null, ownOpen: boolean | null, actions: BarActions): void => {
+const renderBar = (list: HTMLElement, players: BarPlayer[], shown: number | null, ownOpen: boolean | null, actions: BarActions, alerts: Map<string, 'hit' | 'miss'> = new Map()): void => {
   const items = Array.from(list.children) as HTMLLIElement[]
   const same = items.length === players.length &&
     players.every((player, i) => items[i].dataset.index === String(player.index) && items[i].dataset.own === String(player.own))
   if (!same) {
     list.replaceChildren(...players.map(player => createEntry(player, actions)))
   }
-  players.forEach((player, i) => updateEntry(list.children[i] as HTMLLIElement, player, shown, ownOpen))
+  players.forEach((player, i) => updateEntry(list.children[i] as HTMLLIElement, player, shown, ownOpen, alerts.get(player.id)))
 }
 
 /**
@@ -310,6 +319,40 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
   // Whose turn it is, across the top (turnBanner.ts)
   const banner = createTurnBanner(doc)
   nav.after(banner.element)
+  // Shots as they land (shotWatcher.ts): the struck cell flashes, and its player's entry says "Hit" / "Miss" for a
+  // moment. Results on the viewer's own board are also announced (their board may be out of sight in its drawer).
+  const shots = createShotWatcher()
+  const alerts = new Map<string, 'hit' | 'miss'>()
+  const alertTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  const announcer = doc.createElement('div')
+  announcer.className = 'player-bar-announcer'
+  announcer.setAttribute('role', 'status')
+  announcer.style.cssText = 'position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; ' +
+    'clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;'
+  list.before(announcer)
+  const reducedMotion = view?.matchMedia?.('(prefers-reduced-motion: reduce)') ?? null
+
+  /** Show the shots that just landed: flash each cell, and mark its player's entry for a moment. */
+  const showNewShots = (): void => {
+    shots.scan(main).forEach(shot => {
+      flashShot(shot, Boolean(reducedMotion?.matches))
+      const player = players.find(candidate => candidate.index === shot.index)
+      if (!player) {
+        return
+      }
+      alerts.set(player.id, shot.result)
+      clearTimeout(alertTimers.get(player.id))
+      alertTimers.set(player.id, setTimeout(() => {
+        alerts.delete(player.id)
+        alertTimers.delete(player.id)
+        rendered = ''
+        schedule()
+      }, SHOT_ALERT_MS))
+      if (player.own) {
+        announcer.textContent = shot.result === 'hit' ? 'Your fleet was hit' : 'A shot missed your fleet'
+      }
+    })
+  }
 
   /**
    * Tell the game whether the viewer's own board is open: the drawer on a phone; docked on a wide screen, so open
@@ -352,6 +395,7 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
     doc.body.classList.toggle('has-own-board', playing && ownNow !== null)
     banner.update(players, playing)
     if (!playing) {
+      shots.reset()
       state = initialBarState()
       rendered = ''
       menu.setOpen(false)
@@ -360,6 +404,7 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
       style.textContent = ''
       return
     }
+    showNewShots()
     state = nextBarState(players, state)
     const shown = boardToShow(players, state)
     const css = oneBoardCss(shown)
@@ -367,10 +412,10 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
       style.textContent = css
     }
     const ownOpen = narrow?.matches ? drawerOpen : null
-    const key = JSON.stringify([shown, ownOpen, players.map(({ shots, id, ...shownFacts }) => shownFacts)])
+    const key = JSON.stringify([shown, ownOpen, [...alerts], players.map(({ shots, id, ...shownFacts }) => shownFacts)])
     if (key !== rendered) {
       rendered = key
-      renderBar(list, players, shown, ownOpen, { choose, toggleOwn })
+      renderBar(list, players, shown, ownOpen, { choose, toggleOwn }, alerts)
     }
     if (menu.isOpen()) {
       menu.sync()
@@ -451,6 +496,7 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
   return () => {
     observer.disconnect()
     banner.destroy()
+    alertTimers.forEach(timer => clearTimeout(timer))
     doc.removeEventListener('keydown', onKey)
     doc.removeEventListener('click', onOutsideTap, true)
     narrow?.removeEventListener?.('change', onWidth)
