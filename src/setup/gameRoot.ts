@@ -1,6 +1,7 @@
 import { gameName } from '../theme'
 import treeloom from 'treeloom'
 import installPlayerBar from '../view/playerBar'
+import { listenForGameActions } from './gameActions'
 import type { DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { ListenerFunction } from 'treeloom/dist/events/types'
 
@@ -53,7 +54,10 @@ const gameRoot = (listeners: Record<string, ListenerFunction>): DomItemRoot => {
   installPlayerBar(main)
   const head = treeloom.createDomItem({ nodeName: 'head', attributes: {}, element: document.head, children: [] })
   const body = treeloom.createDomItem({ nodeName: 'main', attributes: { className: 'game' }, element: main, children: [] })
-  return treeloom.documentDomItem(listeners, treeloom.initRoot([head, body], listeners))
+  const root = treeloom.documentDomItem(listeners, treeloom.initRoot([head, body], listeners))
+  // The bar's ☰ menu asks the game which actions apply and sends the one confirmed (gameActions.ts)
+  listenForGameActions(root)
+  return root
 }
 
 export default gameRoot

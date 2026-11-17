@@ -1,5 +1,5 @@
 /**
- * The menu behind the player bar's ☰ button: "My controls" (this slice) and, later, "Game" (quit, restart...).
+ * The menu behind the player bar's ☰ button: "My controls", then "Game" (restart, quit, leave...).
  *
  * Like the bar, it lives outside the game's tree. Its switches don't hold any state of their own: each mirrors a
  * control the game already renders (the sensor-scan checkbox in the viewer's own player panel, robots-only's "Show
@@ -25,6 +25,25 @@ export const MIRRORED_CONTROLS: MirroredControl[] = [
   { selector: ':scope > .boards > .role-own .player-controls input[type=checkbox]', label: 'Sensor scan on my turn (heat map)' },
   { selector: ':scope > .ships-control input.all-ships', label: 'Show all ships' }
 ]
+
+/**
+ * The event the menu sends on <main> when it opens, to ask which game actions apply right now: the game fills in
+ * detail.actions (setup/gameActions.ts). Nobody answering means no "Game" section.
+ */
+export const GAME_ACTIONS_QUERY = 'cloakfall:game-actions'
+
+/** The event the menu sends on <main> once the viewer has confirmed an action: detail: { action } (its id). */
+export const GAME_ACTION_EVENT = 'cloakfall:game-action'
+
+/** One action the game offers in the menu's "Game" section. */
+export interface GameAction {
+  /** Sent back in GAME_ACTION_EVENT. */
+  id: string
+  label: string
+  /** The question asked before it happens ("Quit this game?"), and the word on the button that says yes. */
+  confirm: string
+  confirmLabel: string
+}
 
 /** What the bar needs from the panel. */
 export interface ControlPanel {
@@ -58,7 +77,55 @@ export const createControlPanel = (main: HTMLElement): ControlPanel => {
   heading.textContent = 'My controls'
   const list = doc.createElement('div')
   list.className = 'player-bar-controls'
-  panel.append(heading, list)
+  const gameHeading = doc.createElement('h2')
+  gameHeading.textContent = 'Game'
+  const gameList = doc.createElement('div')
+  gameList.className = 'player-bar-actions'
+  panel.append(heading, list, gameHeading, gameList)
+
+  /** A button in the panel. */
+  const panelButton = (text: string, onClick: () => void, className: string = 'player-bar-action'): HTMLButtonElement => {
+    const action = doc.createElement('button')
+    action.type = 'button'
+    action.className = className
+    action.textContent = text
+    action.addEventListener('click', onClick)
+    return action
+  }
+
+  /**
+   * Ask before acting, in the panel itself: the question, then the action's own word and Cancel. Cancel goes back to
+   * the list, with focus on the action again.
+   */
+  const askFirst = (action: GameAction): void => {
+    const question = doc.createElement('p')
+    question.className = 'player-bar-confirm'
+    question.textContent = action.confirm
+    const yes = panelButton(action.confirmLabel, () => {
+      setOpen(false)
+      main.dispatchEvent(new CustomEvent(GAME_ACTION_EVENT, { detail: { action: action.id } }))
+    }, 'player-bar-action is-confirm')
+    const no = panelButton('Cancel', () => {
+      showGameActions()
+      gameList.querySelector<HTMLElement>(`[data-action="${action.id}"]`)?.focus()
+    })
+    gameList.replaceChildren(question, yes, no)
+    yes.focus()
+  }
+
+  /** The "Game" section: whatever the game says applies now (none: the section isn't shown). */
+  const showGameActions = (): void => {
+    const query = new CustomEvent<{ actions: GameAction[] }>(GAME_ACTIONS_QUERY, { detail: { actions: [] } })
+    main.dispatchEvent(query)
+    const actions = query.detail.actions
+    gameHeading.hidden = !actions.length
+    gameList.hidden = !actions.length
+    gameList.replaceChildren(...actions.map(action => {
+      const item = panelButton(action.label, () => askFirst(action))
+      item.dataset.action = action.id
+      return item
+    }))
+  }
 
   // Which of MIRRORED_CONTROLS the switches were last built for, so they are only rebuilt when that changes
   let built: string | null = null
@@ -100,9 +167,10 @@ export const createControlPanel = (main: HTMLElement): ControlPanel => {
     })
   }
 
-  const setOpen = (open: boolean): void => {
+  function setOpen (open: boolean): void {
     if (open) {
       sync()
+      showGameActions()
     }
     panel.hidden = !open
     button.setAttribute('aria-expanded', String(open))

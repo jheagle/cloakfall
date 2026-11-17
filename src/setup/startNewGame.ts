@@ -7,6 +7,7 @@ import updatePlayer from '../attack/updatePlayer'
 import { applyLocalPlayerView } from '../attack/localPlayerView'
 import { startPlacement } from './placement'
 import { getGameMode, setHintSetting } from './gameOptions'
+import { stopGame } from './gameSession'
 import showShipsControl from '../components/layout/showShipsControl'
 import shadeShips from '../cells/shadeShips'
 import { listenForOwnBoard } from './ownBoardReveal'
@@ -85,6 +86,8 @@ export const startNewGame = (
   placementStarter: typeof startPlacement = startPlacement,
   onPlayersBuilt: (players: Player[]) => void = () => {}
 ): void => {
+  // Whatever was still queued for the last game on this root (a restart mid-game) never runs in this one
+  stopGame(parent)
   setHintSetting(parent, hints)
   clearBody(parent)
   // Local multiplayer: a player's ships show while they have their own board open on their turn (ownBoardReveal.ts)

@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import createControlPanel from './controlPanel'
+import createControlPanel, { GAME_ACTION_EVENT, GAME_ACTIONS_QUERY } from './controlPanel'
 
 describe('createControlPanel', () => {
   /** A <main> with the controls the game would render: the viewer's own sensor-scan box and/or robots-only's. */
@@ -68,5 +68,60 @@ describe('createControlPanel', () => {
     main.querySelector('.role-own input').checked = true
     menu.sync()
     expect(switches(menu)[0].querySelector('input').checked).toBe(true)
+  })
+
+  describe('the "Game" section', () => {
+    const quit = { id: 'quit', label: 'Quit to main menu', confirm: 'Quit this game?', confirmLabel: 'Quit' }
+    const answering = (main, actions) => main.addEventListener(GAME_ACTIONS_QUERY, event => event.detail.actions.push(...actions))
+    const gameButtons = menu => Array.from(menu.panel.querySelectorAll('.player-bar-actions button')).map(button => button.textContent)
+
+    test('shows the actions the game says apply, asked each time the menu opens', () => {
+      const main = mainWith()
+      answering(main, [quit])
+      const menu = createControlPanel(main)
+      menu.setOpen(true)
+      expect(gameButtons(menu)).toEqual(['Quit to main menu'])
+      expect(menu.panel.querySelector('.player-bar-actions').hidden).toBe(false)
+    })
+
+    test('no section when the game offers nothing (or nobody answers)', () => {
+      const menu = createControlPanel(mainWith())
+      menu.setOpen(true)
+      expect(menu.panel.querySelector('.player-bar-actions').hidden).toBe(true)
+      expect(Array.from(menu.panel.querySelectorAll('h2')).find(h => h.textContent === 'Game').hidden).toBe(true)
+    })
+
+    test('asks first; Cancel goes back with focus on the action, and nothing happens', () => {
+      const main = mainWith()
+      document.body.append(main)
+      answering(main, [quit])
+      const sent = jest.fn()
+      main.addEventListener(GAME_ACTION_EVENT, sent)
+      const menu = createControlPanel(main)
+      document.body.append(menu.panel)
+      menu.setOpen(true)
+      menu.panel.querySelector('[data-action="quit"]').click()
+      expect(menu.panel.querySelector('.player-bar-confirm').textContent).toBe('Quit this game?')
+      expect(gameButtons(menu)).toEqual(['Quit', 'Cancel'])
+      expect(document.activeElement.textContent).toBe('Quit')
+      menu.panel.querySelectorAll('.player-bar-actions button')[1].click()
+      expect(gameButtons(menu)).toEqual(['Quit to main menu'])
+      expect(document.activeElement).toBe(menu.panel.querySelector('[data-action="quit"]'))
+      expect(sent).not.toHaveBeenCalled()
+      document.body.innerHTML = ''
+    })
+
+    test('confirmed: closes the menu and sends the action to the game', () => {
+      const main = mainWith()
+      answering(main, [quit])
+      const sent = jest.fn(event => event.detail.action)
+      main.addEventListener(GAME_ACTION_EVENT, sent)
+      const menu = createControlPanel(main)
+      menu.setOpen(true)
+      menu.panel.querySelector('[data-action="quit"]').click()
+      menu.panel.querySelector('.is-confirm').click()
+      expect(menu.isOpen()).toBe(false)
+      expect(sent).toHaveReturnedWith('quit')
+    })
   })
 })
