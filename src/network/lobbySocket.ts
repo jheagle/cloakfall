@@ -6,17 +6,44 @@ import type { RoomState } from '../../server/lobbyServer'
 /** The lobby server's port (server/lobbyServer.ts). */
 export const LOBBY_PORT = 3002
 
+/** The meta tag a page can name its lobby with: <meta name="cloakfall-lobby" content="https://lobby.example.com">. */
+export const LOBBY_META_NAME = 'cloakfall-lobby'
+
 /**
- * The lobby server's URL: port 3002 on the host the page was loaded from, so a phone that opened the game from the
- * laptop's LAN address (http://192.168.x.y:8080) reaches the laptop's lobby, not itself. Outside a page (Node, tests),
- * or for a page opened from a file, it is localhost. No server is deployed yet: this only works against a lobby
- * server run on the machine serving the page (npm run serve:lobby).
- * @param location The page's location: the global one by default, null when there is none.
+ * The lobby URL a page names in its cloakfall-lobby meta tag, or null when it names none (no tag, no document).
+ * @param doc The page's document: the global one by default, null when there is none.
  */
-export const lobbyUrl = (location: Pick<Location, 'protocol' | 'hostname'> | null = globalThis.location ?? null): string =>
-  location && /^https?:$/.test(location.protocol) && location.hostname
+export const configuredLobbyUrl = (doc: Pick<Document, 'querySelector'> | null = globalThis.document ?? null): string | null =>
+  doc?.querySelector(`meta[name="${LOBBY_META_NAME}"]`)?.getAttribute('content') ?? null
+
+/**
+ * The lobby server's URL. A page that names its lobby with a cloakfall-lobby meta tag (the website's copy of the game,
+ * against the hosted lobby) uses that tag's origin, when it is an http: or https: URL; anything else in the tag is ignored. Without
+ * one, it is port 3002 on the host the page was loaded from, so a phone that opened the game from the laptop's LAN
+ * address (http://192.168.x.y:8080) reaches the laptop's lobby (npm run serve:lobby), not itself. Outside a page (Node,
+ * tests), or for a page opened from a file, it is localhost.
+ * @param location The page's location: the global one by default, null when there is none.
+ * @param configured The lobby URL the page names: its meta tag's by default, null for none.
+ */
+export const lobbyUrl = (
+  location: Pick<Location, 'protocol' | 'hostname'> | null = globalThis.location ?? null,
+  configured: string | null = configuredLobbyUrl()
+): string => {
+  if (configured) {
+    try {
+      const url = new URL(configured)
+      // Only the origin: socket.io would take any path as a namespace (and quietly connect to the wrong one).
+      if (/^https?:$/.test(url.protocol)) {
+        return url.origin
+      }
+    } catch {
+      // Not a URL: fall back to the page's own host
+    }
+  }
+  return location && /^https?:$/.test(location.protocol) && location.hostname
     ? `${location.protocol}//${location.hostname}:${LOBBY_PORT}`
     : `http://localhost:${LOBBY_PORT}`
+}
 
 let socket: Socket | null = null
 

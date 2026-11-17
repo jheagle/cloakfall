@@ -4,6 +4,7 @@
 import { Server } from 'socket.io'
 import { createServer } from 'http'
 import {
+  configuredLobbyUrl,
   connectLobbySocket,
   disconnectLobbySocket,
   joinRoom,
@@ -28,6 +29,48 @@ describe('lobbyUrl', () => {
 
   test("by default it reads the page's own location", () => {
     expect(lobbyUrl()).toBe(`${window.location.protocol}//${window.location.hostname}:${LOBBY_PORT}`)
+  })
+
+  describe('a page that names its lobby in a cloakfall-lobby meta tag', () => {
+    const page = { protocol: 'https:', hostname: 'joshuaheagle.com' }
+    let meta
+
+    beforeEach(() => {
+      meta = document.createElement('meta')
+      meta.name = 'cloakfall-lobby'
+      document.head.appendChild(meta)
+    })
+
+    afterEach(() => meta.remove())
+
+    test("uses only the tag's origin: a path or query would otherwise become a socket.io namespace", () => {
+      meta.content = 'https://cloakfall.joshuaheagle.com:8443/lobby/?x=1'
+      expect(lobbyUrl(page)).toBe('https://cloakfall.joshuaheagle.com:8443')
+    })
+
+    test("uses the tag's https URL, without its trailing slash", () => {
+      meta.content = 'https://cloakfall.joshuaheagle.com/'
+      expect(configuredLobbyUrl()).toBe('https://cloakfall.joshuaheagle.com/')
+      expect(lobbyUrl(page)).toBe('https://cloakfall.joshuaheagle.com')
+      expect(lobbyUrl(null)).toBe('https://cloakfall.joshuaheagle.com')
+      expect(lobbyUrl(page, 'http://192.168.1.20:3002')).toBe('http://192.168.1.20:3002')
+    })
+
+    test.each([
+      ['a javascript: URL', 'javascript:alert(1)'],
+      ['an empty value', ''],
+      ['something that is not a URL', 'not a url'],
+      ['another kind of URL', 'ftp://cloakfall.joshuaheagle.com']
+    ])('ignores %s and falls back to the page host', (_, content) => {
+      meta.content = content
+      expect(lobbyUrl(page)).toBe('https://joshuaheagle.com:3002')
+      expect(lobbyUrl(null)).toBe('http://localhost:3002')
+    })
+  })
+
+  test('without the tag, there is no configured lobby', () => {
+    expect(configuredLobbyUrl()).toBeNull()
+    expect(configuredLobbyUrl(null)).toBeNull()
   })
 })
 
