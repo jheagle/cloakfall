@@ -14,12 +14,21 @@ useGameLifecycle()
 const hitCount = player => player.board.children[0].children.flatMap(row => row.children).filter(cell => cell.isHit).length
 
 describe('the game menu\'s actions', () => {
-  test('a local game offers Restart and Quit to main menu, each with a question first', async () => {
+  test('a local game offers the turn timer (a switch), then Restart and Quit to main menu, each with a question first', async () => {
     const { doc } = startGame({ humans: 1, robots: 1 })
     await settle()
     const actions = gameActionsFor(doc)
-    expect(actions.map(action => action.id)).toEqual(['restart', 'quit'])
-    actions.forEach(action => expect(action.confirm).toMatch(/\?/))
+    expect(actions.map(action => action.id)).toEqual(['turn-timer', 'restart', 'quit'])
+    expect(actions[0].setting).toEqual({ checked: false })
+    actions.slice(1).forEach(action => expect(action.confirm).toMatch(/\?/))
+    runGameAction(doc, 'turn-timer', true)
+    expect(gameActionsFor(doc)[0].setting).toEqual({ checked: true })
+  })
+
+  test('robots only: no turn timer (no human takes turns)', async () => {
+    const { doc } = startGame({ humans: 0, robots: 2 })
+    await settle()
+    expect(gameActionsFor(doc).map(action => action.id)).toEqual(['restart', 'quit'])
   })
 
   test('Quit mid-game: the main menu, and the game stops there: no more shots, no final score over the menu', async () => {

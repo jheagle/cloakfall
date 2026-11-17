@@ -32,7 +32,8 @@ export const MIRRORED_CONTROLS: MirroredControl[] = [
  */
 export const GAME_ACTIONS_QUERY = 'cloakfall:game-actions'
 
-/** The event the menu sends on <main> once the viewer has confirmed an action: detail: { action } (its id). */
+/** The event the menu sends on <main> once the viewer has confirmed an action, or flipped a setting: detail:
+ * { action } (its id), plus { checked } for a setting. */
 export const GAME_ACTION_EVENT = 'cloakfall:game-action'
 
 /** One action the game offers in the menu's "Game" section. */
@@ -40,9 +41,12 @@ export interface GameAction {
   /** Sent back in GAME_ACTION_EVENT. */
   id: string
   label: string
-  /** The question asked before it happens ("Quit this game?"), and the word on the button that says yes. */
-  confirm: string
-  confirmLabel: string
+  /** The question asked before it happens ("Quit this game?"), and the word on the button that says yes. A setting
+   * (below) is never asked about: it is a switch, flipped back as easily. */
+  confirm?: string
+  confirmLabel?: string
+  /** A setting rather than an action: shown as a switch, on or off as given. */
+  setting?: { checked: boolean }
 }
 
 /** What the bar needs from the panel. */
@@ -100,8 +104,8 @@ export const createControlPanel = (main: HTMLElement): ControlPanel => {
   const askFirst = (action: GameAction): void => {
     const question = doc.createElement('p')
     question.className = 'player-bar-confirm'
-    question.textContent = action.confirm
-    const yes = panelButton(action.confirmLabel, () => {
+    question.textContent = action.confirm ?? ''
+    const yes = panelButton(action.confirmLabel ?? action.label, () => {
       setOpen(false)
       main.dispatchEvent(new CustomEvent(GAME_ACTION_EVENT, { detail: { action: action.id } }))
     }, 'player-bar-action is-confirm')
@@ -121,6 +125,21 @@ export const createControlPanel = (main: HTMLElement): ControlPanel => {
     gameHeading.hidden = !actions.length
     gameList.hidden = !actions.length
     gameList.replaceChildren(...actions.map(action => {
+      if (action.setting) {
+        const row = doc.createElement('label')
+        row.className = 'player-bar-control'
+        row.dataset.action = action.id
+        const box = doc.createElement('input')
+        box.type = 'checkbox'
+        box.checked = action.setting.checked
+        box.addEventListener('change', () => {
+          main.dispatchEvent(new CustomEvent(GAME_ACTION_EVENT, { detail: { action: action.id, checked: box.checked } }))
+        })
+        const text = doc.createElement('span')
+        text.textContent = action.label
+        row.append(box, text)
+        return row
+      }
       const item = panelButton(action.label, () => askFirst(action))
       item.dataset.action = action.id
       return item

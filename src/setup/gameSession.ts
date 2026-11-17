@@ -19,6 +19,9 @@ export interface GameSession {
   /** Which game on this root the queue is running steps for: stopGame bumps it, and a step queued for an earlier one
    * is skipped when its turn comes (see queue.ts), so a game that was quit or restarted can't keep playing. */
   generation: number
+  /** Local games: whether a human's turn has a time limit, after which a random shot is fired for them (the game
+   * menu's "Turn timer", setup/localTurnTimer.ts). Kept for the next games on the same page. */
+  turnTimer: boolean
   placement: PlacementSession | null
   /** Overrides how endGame.ts shows the final score, for a remote room's game - see gameplay.ts's startRoomGame.
    * null (the default) keeps local hot-seat's own finalScore screen and its Play Again/Change Settings/Main Menu
@@ -40,6 +43,7 @@ const defaultSession = (): GameSession => ({
   attackLock: { isLocked: false },
   queue: siFunciona.queueTimeout(),
   generation: 0,
+  turnTimer: false,
   placement: null,
   onGameOver: null,
   onAttackerChanged: null
