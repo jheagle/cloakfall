@@ -35,6 +35,9 @@ export interface RoomGame {
   root: DomItemRoot
   players: Player[]
   playerBySocket: Map<string, Player>
+  /** Stop the game for good, for a room that closed while it was still going (the host left, or it sat idle): no
+   * more turn timers or placement deadlines, so nothing keeps playing random shots for players who are gone. */
+  stop: () => void
 }
 
 /**
@@ -152,7 +155,16 @@ export const startRoomGame = (roomPlayers: Array<[socketId: string, name: string
       playerBySocket.set(roomPlayers[i][0], player)
     })
   })
-  return { root, players, playerBySocket }
+  const stop = (): void => {
+    if (turnTimer) {
+      clearTimeout(turnTimer)
+      turnTimer = null
+    }
+    cancelRemotePlacement(root)
+    // A turn that starts after this (a robot's queued step finishing) must not arm a new deadline either.
+    getSession(root).onAttackerChanged = () => {}
+  }
+  return { root, players, playerBySocket, stop }
 }
 
 /** How long to wait, after a queued engine step resolves, for any others to follow before actually broadcasting

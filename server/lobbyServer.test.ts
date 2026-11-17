@@ -5,7 +5,7 @@ import { io as ioClient, Socket as ClientSocket } from 'socket.io-client'
 import { createLobbyServer, isRoomGameOver } from './lobbyServer'
 import * as gameplay from './gameplay'
 import type { Server as HttpServer } from 'http'
-import type { RoomState } from './lobbyServer'
+import type { LobbyOptions, RoomState } from './lobbyServer'
 import type { RoomGame } from './gameplay'
 
 // These tests run real socket.io servers and play real games (the slowest takes ~5.5s on its own); the default 5s
@@ -16,13 +16,25 @@ let server: HttpServer
 let baseUrl: string
 const sockets: ClientSocket[] = []
 
-beforeEach(async () => {
-  server = createLobbyServer()
+/** Start `server` on a free port and point baseUrl at it. */
+const listen = async (): Promise<void> => {
   await new Promise<void>(resolve => server.listen(0, resolve))
   const address = server.address()
   const port = typeof address === 'object' && address ? address.port : 0
   baseUrl = `http://localhost:${port}`
+}
+
+beforeEach(async () => {
+  server = createLobbyServer()
+  await listen()
 })
+
+/** Replace this test's server with one started with these options (afterEach closes it like the default one). */
+const restartWith = async (options: LobbyOptions): Promise<void> => {
+  await new Promise(resolve => server.close(resolve))
+  server = createLobbyServer(options)
+  await listen()
+}
 
 afterEach(async () => {
   sockets.forEach(socket => socket.close())
@@ -66,6 +78,8 @@ describe('payloads from clients are never trusted', () => {
   const events = ['createRoom', 'peekRoom', 'joinRoom', 'startGame', 'gameAction']
 
   test('junk sent to every event, with and without a callback, never stops the server', async () => {
+    // ~170 messages at once: far past the message rate limit (see 'limits' below), which isn't what this tests.
+    await restartWith({ limits: { messagesPerSecond: 10000, messageBurst: 10000 } })
     const attacker = connect()
     await new Promise(resolve => attacker.on('connect', resolve))
     for (const event of events) {
@@ -648,5 +662,172 @@ describe('the lobby server', () => {
     // "calling startRoomGame again... produces a genuinely fresh, independent game" test proves the restart
     // mechanics the guard's "is over" branch unlocks - between the three, a full socket-driven win is not
     // needed to trust this change.
+  })
+})
+
+describe('limits (hardening H3/H4/H5)', () => {
+  /** A client socket with extra handshake headers (an Origin, or what a reverse proxy would add). */
+  const connectWithHeaders = (extraHeaders: Record<string, string>): ClientSocket => {
+    const socket = ioClient(baseUrl, { transports: ['websocket'], forceNew: true, extraHeaders })
+    sockets.push(socket)
+    return socket
+  }
+
+  /** Resolves to 'connected', or to the refusal's message. */
+  const outcome = (socket: ClientSocket): Promise<string> => new Promise(resolve => {
+    socket.once('connect', () => resolve('connected'))
+    socket.once('connect_error', (error: Error) => resolve(error.message))
+  })
+
+  const wait = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
+
+  test('a connection sending too fast is answered with an error instead of being handled', async () => {
+    await restartWith({ limits: { messagesPerSecond: 0.001, messageBurst: 2 } })
+    const client = connect()
+    expect(await emit(client, 'peekRoom', { roomCode: 'AAAA' })).toEqual({ error: 'No room with that code' })
+    expect(await emit(client, 'peekRoom', { roomCode: 'AAAA' })).toEqual({ error: 'No room with that code' })
+    expect(await emit(client, 'peekRoom', { roomCode: 'AAAA' })).toEqual({ error: 'Too many messages, please slow down' })
+  })
+
+  test('a connection that keeps going after being refused is closed', async () => {
+    await restartWith({ limits: { messagesPerSecond: 0.001, messageBurst: 1, maxRefusedMessages: 3 } })
+    const client = connect()
+    await new Promise(resolve => client.on('connect', resolve))
+    const closed = new Promise(resolve => client.once('disconnect', resolve))
+    for (let i = 0; i < 5; ++i) {
+      client.emit('peekRoom', { roomCode: 'AAAA' })
+    }
+    expect(await closed).toBe('io server disconnect')
+  })
+
+  test('a message bigger than maxMessageBytes closes the connection', async () => {
+    await restartWith({ limits: { maxMessageBytes: 1000 } })
+    const client = connect()
+    await new Promise(resolve => client.on('connect', resolve))
+    const closed = new Promise(resolve => client.once('disconnect', resolve))
+    client.emit('createRoom', { name: 'x'.repeat(5000), roomName: 'Big' })
+    expect(await closed).toBe('transport close')
+  })
+
+  test('connections per address are capped, and a closed one frees its place', async () => {
+    await restartWith({ limits: { maxConnectionsPerAddress: 2 } })
+    const first = connect()
+    expect(await outcome(first)).toBe('connected')
+    expect(await outcome(connect())).toBe('connected')
+    expect(await outcome(connect())).toBe('Too many connections from your network, please close some tabs and try again')
+    first.close()
+    await wait(100)
+    expect(await outcome(connect())).toBe('connected')
+  })
+
+  test('behind a trusted proxy, connections count per forwarded address (the last X-Forwarded-For entry)', async () => {
+    await restartWith({ limits: { maxConnectionsPerAddress: 1, trustProxy: true } })
+    expect(await outcome(connectWithHeaders({ 'X-Forwarded-For': '203.0.113.5' }))).toBe('connected')
+    expect(await outcome(connectWithHeaders({ 'X-Forwarded-For': '203.0.113.6' }))).toBe('connected')
+    // A client can put anything first; only the entry our proxy appended counts.
+    expect(await outcome(connectWithHeaders({ 'X-Forwarded-For': '198.51.100.1, 203.0.113.5' }))).toMatch(/Too many connections/)
+  })
+
+  test('without trustProxy, X-Forwarded-For is ignored (a client could otherwise pick any address)', async () => {
+    await restartWith({ limits: { maxConnectionsPerAddress: 1 } })
+    expect(await outcome(connectWithHeaders({ 'X-Forwarded-For': '203.0.113.5' }))).toBe('connected')
+    expect(await outcome(connectWithHeaders({ 'X-Forwarded-For': '203.0.113.6' }))).toMatch(/Too many connections/)
+  })
+
+  test('with origins set, a page from another site is refused; the allowed site and non-browser clients are not', async () => {
+    await restartWith({ origins: ['https://joshuaheagle.com'] })
+    expect(await outcome(connectWithHeaders({ Origin: 'https://joshuaheagle.com' }))).toBe('connected')
+    expect(await outcome(connectWithHeaders({ Origin: 'https://evil.example' }))).not.toBe('connected')
+    expect(await outcome(connect())).toBe('connected')
+  })
+
+  test('rooms open at once are capped', async () => {
+    await restartWith({ limits: { maxRooms: 1 } })
+    await emit<RoomState>(connect(), 'createRoom', { name: 'Ann', roomName: 'One' })
+    expect(await emit(connect(), 'createRoom', { name: 'Bo', roomName: 'Two' })).toEqual({ error: 'The lobby is full right now, please try again in a few minutes' })
+  })
+
+  test('one connection is in one room at a time (it cannot pile up rooms nobody closes)', async () => {
+    const host = connect()
+    const state = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'One' })
+    expect(await emit(host, 'createRoom', { name: 'Ann', roomName: 'Two' })).toEqual({ error: 'Already in a room' })
+    const joiner = connect()
+    await emit<RoomState>(joiner, 'joinRoom', { roomCode: state.roomCode, name: 'Bo' })
+    expect(await emit(joiner, 'joinRoom', { roomCode: state.roomCode, name: 'Bo' })).toEqual({ error: 'Already in a room' })
+    expect(await emit(joiner, 'createRoom', { name: 'Bo', roomName: 'Three' })).toEqual({ error: 'Already in a room' })
+  })
+
+  test('after too many unknown codes, lookups from that address are refused, even for a real code', async () => {
+    await restartWith({ limits: { maxFailedLookups: 3 } })
+    const state = await emit<RoomState>(connect(), 'createRoom', { name: 'Ann', roomName: 'Real' })
+    const scanner = connect()
+    expect(await emit(scanner, 'peekRoom', { roomCode: 'ZZZ2' })).toEqual({ error: 'No room with that code' })
+    expect(await emit(scanner, 'joinRoom', { roomCode: 'ZZZ3', name: 'Eve' })).toEqual({ error: 'No room with that code' })
+    expect(await emit(scanner, 'peekRoom', { roomCode: 'ZZZ4' })).toEqual({ error: 'No room with that code' })
+    const blocked = { error: 'Too many tries with codes that don\'t exist, please wait a few minutes' }
+    expect(await emit(scanner, 'peekRoom', { roomCode: state.roomCode })).toEqual(blocked)
+    expect(await emit(scanner, 'joinRoom', { roomCode: state.roomCode, name: 'Eve' })).toEqual(blocked)
+    // Counted per address, not per connection: a fresh connection from the same place is still blocked.
+    expect(await emit(connect(), 'peekRoom', { roomCode: state.roomCode })).toEqual(blocked)
+  })
+
+  test('a room nobody uses is closed after roomIdleMs, and its members are told', async () => {
+    await restartWith({ limits: { roomIdleMs: 150 } })
+    const host = connect()
+    const state = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Idle' })
+    await new Promise(resolve => host.once('roomClosed', resolve))
+    expect(await emit(connect(), 'peekRoom', { roomCode: state.roomCode })).toEqual({ error: 'No room with that code' })
+  })
+
+  test('a room in use stays open past roomIdleMs', async () => {
+    await restartWith({ limits: { roomIdleMs: 400 } })
+    const host = connect()
+    const state = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Busy' })
+    for (let i = 0; i < 10; ++i) {
+      await wait(100)
+      await emit(host, 'peekRoom', { roomCode: state.roomCode })
+    }
+    expect(await emit(connect(), 'peekRoom', { roomCode: state.roomCode })).toEqual({ roomName: 'Busy', hostName: 'Ann' })
+  })
+
+  describe('a closed room stops its game (no timer keeps playing it for players who are gone)', () => {
+    const realStartRoomGame = gameplay.startRoomGame
+    let stops: jest.Mock[]
+
+    beforeEach(() => {
+      stops = []
+      jest.spyOn(gameplay, 'startRoomGame').mockImplementation((...args) => {
+        const game = realStartRoomGame(...args)
+        const stop = jest.fn(game.stop)
+        stops.push(stop)
+        return { ...game, stop }
+      })
+    })
+
+    afterEach(() => jest.restoreAllMocks())
+
+    const startedGame = async (): Promise<ClientSocket> => {
+      const host = connect()
+      const state = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Game' })
+      await emit(connect(), 'joinRoom', { roomCode: state.roomCode, name: 'Bo' })
+      expect(await emit(host, 'startGame', { hints: 'on' })).toEqual({ started: true })
+      return host
+    }
+
+    test('when the host leaves', async () => {
+      const host = await startedGame()
+      host.close()
+      await wait(200)
+      expect(stops).toHaveLength(1)
+      expect(stops[0]).toHaveBeenCalled()
+    })
+
+    test('when it sits idle', async () => {
+      await restartWith({ limits: { roomIdleMs: 300 } })
+      await startedGame()
+      await wait(1000)
+      expect(stops).toHaveLength(1)
+      expect(stops[0]).toHaveBeenCalled()
+    })
   })
 })

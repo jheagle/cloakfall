@@ -322,6 +322,30 @@ describe('the per-turn timeout', () => {
     expect(victim.attacker).toBe(true)
   })
 
+  test('stop() ends it: no random shot once the deadline passes, and no new deadline on a later turn', async () => {
+    const game = startRoomGame([['alice-socket', 'Alice'], ['bob-socket', 'Bob']], 'optional')
+    watchRoomGame(game, () => {})
+    await playToRealGame(game)
+    const attacker = game.players.find(player => player.attacker) as any
+    const victim = game.players.find(player => !player.attacker) as any
+    const hitsBefore = hitCount(victim)
+
+    game.stop()
+    await jest.advanceTimersByTimeAsync(TURN_TIMEOUT_MS * 3)
+
+    expect(hitCount(victim)).toBe(hitsBefore)
+    expect(attacker.attacker).toBe(true)
+  })
+
+  test('stop() during placement cancels the placement deadline too', async () => {
+    let timerChanges = 0
+    const game = startRoomGame([['alice-socket', 'Alice'], ['bob-socket', 'Bob']], 'optional', () => { timerChanges++ })
+    watchRoomGame(game, () => {})
+    game.stop()
+    await jest.advanceTimersByTimeAsync(PLACEMENT_TIMEOUT_MS * 2)
+    expect(timerChanges).toBe(0)
+  })
+
   test('triggers a fresh broadcast too, the same as the placement deadline does', async () => {
     let broadcast: () => void = () => {}
     const game = startRoomGame([['alice-socket', 'Alice'], ['bob-socket', 'Bob']], 'optional', () => broadcast())
