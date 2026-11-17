@@ -153,9 +153,13 @@ describe('installPlayerBar', () => {
   })
   afterEach(() => {
     jest.restoreAllMocks()
+    removeBar?.()
+    removeBar = null
     document.body.innerHTML = ''
     document.body.className = ''
   })
+
+  let removeBar = null
 
   /** Let the scheduled refresh run. */
   const nextFrame = () => new Promise(resolve => setTimeout(resolve, 5))
@@ -166,8 +170,9 @@ describe('installPlayerBar', () => {
     document.body.append(main)
     renderGame(main, players)
     const remove = installPlayerBar(main)
+    removeBar = remove
     await nextFrame()
-    return { main, remove, nav: document.querySelector('nav.player-bar'), style: main.nextElementSibling.nextElementSibling }
+    return { main, remove, nav: document.querySelector('nav.player-bar'), style: document.querySelector('nav.player-bar ~ style') }
   }
 
   test('during play: an entry per player, buttons for opponents, the shown one pressed, and a stylesheet showing it', async () => {
@@ -179,11 +184,13 @@ describe('installPlayerBar', () => {
     expect(nav.hidden).toBe(false)
     expect(document.body.classList.contains('has-player-bar')).toBe(true)
     const entries = Array.from(nav.querySelectorAll('.player-bar-entry'))
-    expect(entries.map(entry => entry.tagName)).toEqual(['SPAN', 'BUTTON', 'BUTTON'])
+    expect(entries.map(entry => entry.tagName)).toEqual(['BUTTON', 'BUTTON', 'BUTTON'])
     expect(entries[0].textContent).toBe('Ann (you)100%firing')
     // Names are text, never markup
     expect(entries[2].querySelector('.player-bar-name').textContent).toBe('<b>Cy</b>')
     expect(entries.map(entry => entry.getAttribute('aria-pressed'))).toEqual([null, 'true', 'false'])
+    // No drawer on a wide screen (this DOM has no matchMedia): the own entry isn't a disclosure there
+    expect(entries[0].hasAttribute('aria-expanded')).toBe(false)
     expect(style.textContent).toContain(':nth-child(2)')
   })
 
@@ -193,10 +200,10 @@ describe('installPlayerBar', () => {
       { role: 'target', name: 'Bob' },
       { role: 'target', name: 'Cy' }
     ])
-    nav.querySelectorAll('button')[1].click()
+    nav.querySelectorAll('button')[2].click()
     await nextFrame()
     expect(style.textContent).toContain(':nth-child(3)')
-    expect(Array.from(nav.querySelectorAll('button')).map(button => button.getAttribute('aria-pressed'))).toEqual(['false', 'true'])
+    expect(Array.from(nav.querySelectorAll('button')).map(button => button.getAttribute('aria-pressed'))).toEqual([null, 'false', 'true'])
   })
 
   test('a turn change updates the entries in place: the same elements, only what changed', async () => {
@@ -217,6 +224,89 @@ describe('installPlayerBar', () => {
     expect(after[0].querySelector('.player-bar-turn').hidden).toBe(true)
   })
 
+  describe('on a phone: the own board\'s drawer', () => {
+    beforeEach(() => {
+      window.matchMedia = jest.fn(() => ({ matches: true, addEventListener: jest.fn(), removeEventListener: jest.fn() }))
+    })
+    afterEach(() => {
+      delete window.matchMedia
+    })
+
+    const game = [{ role: 'own', name: 'Ann', turn: 'attacker' }, { role: 'target', name: 'Bob' }]
+    const ownEntry = nav => nav.querySelector('.player-bar-entry.is-own')
+    const isOpen = () => document.body.classList.contains('own-board-open')
+
+    test('the own entry opens and closes it, saying so (aria-expanded)', async () => {
+      const { nav } = await setUp(game)
+      expect(ownEntry(nav).getAttribute('aria-expanded')).toBe('false')
+      ownEntry(nav).click()
+      await nextFrame()
+      expect(isOpen()).toBe(true)
+      expect(ownEntry(nav).getAttribute('aria-expanded')).toBe('true')
+      ownEntry(nav).click()
+      await nextFrame()
+      expect(isOpen()).toBe(false)
+      expect(ownEntry(nav).getAttribute('aria-expanded')).toBe('false')
+    })
+
+    test('Escape closes it and puts focus back on the own entry', async () => {
+      const { nav } = await setUp(game)
+      ownEntry(nav).click()
+      document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }))
+      await nextFrame()
+      expect(isOpen()).toBe(false)
+      expect(document.activeElement).toBe(ownEntry(nav))
+    })
+
+    test('a tap outside it only closes it: it never reaches the board underneath (no shot)', async () => {
+      const { main, nav } = await setUp(game)
+      const cell = main.querySelector('.role-target .matrix')
+      const shot = jest.fn()
+      cell.addEventListener('click', shot)
+      ownEntry(nav).click()
+      cell.click()
+      expect(isOpen()).toBe(false)
+      expect(shot).not.toHaveBeenCalled()
+      // closed: taps reach the board again
+      cell.click()
+      expect(shot).toHaveBeenCalledTimes(1)
+    })
+
+    test('taps inside it (its controls) and on the bar leave it open', async () => {
+      const { main, nav } = await setUp(game)
+      ownEntry(nav).click()
+      main.querySelector('.role-own .matrix').click()
+      nav.querySelectorAll('button')[1].click()
+      expect(isOpen()).toBe(true)
+    })
+
+    test('it closes when the board it shows stops being the viewer\'s (local multiplayer: the next turn)', async () => {
+      const { main, nav } = await setUp(game)
+      ownEntry(nav).click()
+      expect(isOpen()).toBe(true)
+      renderGame(main, [{ role: 'target', name: 'Ann' }, { role: 'own', name: 'Bob', turn: 'attacker' }])
+      await nextFrame()
+      expect(isOpen()).toBe(false)
+    })
+
+    test('it closes when the game ends', async () => {
+      const { main, nav } = await setUp(game)
+      ownEntry(nav).click()
+      renderGame(main, [{ role: 'own', name: 'Ann', turn: 'winner' }, { role: 'summary', name: 'Bob', status: 0 }])
+      await nextFrame()
+      expect(isOpen()).toBe(false)
+      expect(document.body.classList.contains('has-own-board')).toBe(false)
+    })
+  })
+
+  test('has-own-board while playing with an own board (wide screens dock it apart), not in robots only', async () => {
+    const { main } = await setUp([{ role: 'own', name: 'Ann', turn: 'attacker' }, { role: 'target', name: 'Bob' }])
+    expect(document.body.classList.contains('has-own-board')).toBe(true)
+    renderGame(main, [{ role: 'summary', name: 'R1', turn: 'attacker' }, { role: 'summary', name: 'R2' }])
+    await nextFrame()
+    expect(document.body.classList.contains('has-own-board')).toBe(false)
+  })
+
   test('hidden, with no stylesheet, when no one is playing (menu, placement, the end)', async () => {
     const { nav, style } = await setUp([{ role: 'own', name: 'Ann' }, { role: 'summary', name: 'Bob' }])
     expect(nav.hidden).toBe(true)
@@ -227,6 +317,7 @@ describe('installPlayerBar', () => {
   test('removing it takes the bar and its stylesheet away', async () => {
     const { remove } = await setUp([{ role: 'own', name: 'Ann', turn: 'attacker' }, { role: 'target', name: 'Bob' }])
     remove()
+    removeBar = null
     expect(document.querySelector('nav.player-bar')).toBeNull()
     expect(document.querySelector('style')).toBeNull()
   })

@@ -177,6 +177,8 @@
 // The player bar (src/view/playerBar.ts): fixed to the bottom during play, one entry per player. On a phone it also
 // picks which opponent's board is shown; the page gets room at the bottom so the bar never covers a board.
 body.has-player-bar
+  // border-box: body is height 100% (layouts.sass), so the padding must not add to it (an empty scroll otherwise)
+  box-sizing: border-box
   padding-bottom: 8rem
 
 .player-bar
@@ -259,3 +261,73 @@ body.has-player-bar
 
     .player-bar-status
       text-decoration: line-through
+
+// The viewer's own board in a drawer on a phone (src/view/playerBar.ts opens it from their own entry in the bar):
+// off the page, sliding in from the left, dimming the page around it. Wide screens dock it (below).
+.player-bar .is-own .player-bar-name::after
+  content: ' \25B8'
+
+@media (max-width: 759px)
+  body.has-player-bar main.game > .boards > .player.role-own
+    position: fixed
+    top: 0
+    bottom: 0
+    left: 0
+    z-index: 899
+    box-sizing: border-box
+    width: min(92vw, 36rem)
+    max-width: none
+    margin: 0
+    padding: 1.5rem 1rem 9rem
+    overflow-y: auto
+    border-radius: 0 .8rem .8rem 0
+    background-color: rgba(12, 17, 33, .98)
+    // Closed: off to the left, and hidden from keyboard and screen readers until it opens
+    transform: translateX(-105%)
+    visibility: hidden
+    transition: transform 250ms ease, visibility 0s linear 250ms
+
+    .matrix .layer .row .column
+      height: 2.6rem
+      width: 2.6rem
+
+    .player-stats
+      font-size: 1.4rem
+
+  body.has-player-bar.own-board-open main.game > .boards > .player.role-own
+    transform: none
+    visibility: visible
+    transition: transform 250ms ease
+    // The dimmed page around it. A shadow, not a backdrop element: main is a stacking context of its own
+    // (layouts.sass), so anything outside it would sit over the drawer too
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .55)
+
+@media (prefers-reduced-motion: reduce)
+  body.has-player-bar main.game > .boards > .player.role-own
+    transition: none !important
+
+// Wide screens: the viewer's own board docked in a column of its own on the left, apart from the opponents' boards
+// (user, 2026-11-17), which wrap in the space to its right. Fixed, so it stays in view however far the boards scroll.
+@media (min-width: 760px)
+  body.has-own-board main.game > .boards
+    padding-left: 30rem
+
+  body.has-own-board main.game > .boards > .player.role-own
+    position: fixed
+    top: 1.5rem
+    left: 1.5rem
+    max-height: calc(100vh - 10.5rem)
+    z-index: 100
+    box-sizing: border-box
+    width: 26rem
+    max-width: none
+    padding: 1.5rem 1rem
+    overflow-y: auto
+    background-color: rgba(12, 17, 33, .98)
+
+    .matrix .layer .row .column
+      height: 2.2rem
+      width: 2.2rem
+
+    .player-stats
+      font-size: 1.3rem
