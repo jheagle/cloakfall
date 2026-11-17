@@ -173,3 +173,89 @@
     color: white
     font-size: 1.6rem
     text-align: center
+
+// The player bar (src/view/playerBar.ts): fixed to the bottom during play, one entry per player. On a phone it also
+// picks which opponent's board is shown; the page gets room at the bottom so the bar never covers a board.
+body.has-player-bar
+  padding-bottom: 8rem
+
+.player-bar
+  position: fixed
+  left: 0
+  right: 0
+  bottom: 0
+  z-index: 900
+  padding: .6rem .8rem calc(.6rem + env(safe-area-inset-bottom))
+  background-color: rgba(7, 11, 22, .96)
+  border-top: .1rem solid #3a4770
+
+  &[hidden]
+    display: none
+
+  ul
+    list-style: none
+    margin: 0 auto
+    padding: 0
+    max-width: 90rem
+    display: flex
+    gap: .6rem
+    justify-content: center
+
+    // Up to four players share one row on a phone: each entry takes an equal share, long names end in "..."
+    li
+      flex: 1 1 0
+      min-width: 0
+      max-width: 18rem
+
+  .player-bar-entry
+    display: flex
+    flex-direction: column
+    align-items: flex-start
+    box-sizing: border-box
+    width: 100%
+    min-height: 4.4rem
+    padding: .4rem .6rem
+    border: .2rem solid #3a4770
+    border-left: .6rem solid var(--player-colour, #3a4770)
+    border-radius: .6rem
+    background-color: #10172c
+    color: #e8ecf8
+    font: inherit
+    font-size: 1.4rem
+    line-height: 1.3
+    text-align: left
+
+  button.player-bar-entry
+    cursor: pointer
+
+    &:hover, &:focus-visible
+      border-color: #ff8a3d
+      border-left-color: var(--player-colour, #ff8a3d)
+
+    &[aria-pressed='true']
+      border-color: #e8ecf8
+      border-left-color: var(--player-colour, #e8ecf8)
+      background-color: #1c2747
+
+  .player-bar-name
+    max-width: 100%
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+    font-weight: 700
+    color: var(--player-colour, #e8ecf8)
+
+  .player-bar-status
+    color: #c9d1e8
+
+  .player-bar-turn
+    font-size: 1.2rem
+    font-weight: 700
+    text-transform: uppercase
+    color: #ff8a3d
+
+  .is-out
+    opacity: .55
+
+    .player-bar-status
+      text-decoration: line-through

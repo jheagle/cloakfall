@@ -26,6 +26,14 @@ describe('playerStats', () => {
     expect(shipList(stats).children).toHaveLength(2)
   })
 
+  test('carries the status and whose turn it is as data, for the player bar', () => {
+    const stats = playerStats({ ...player, status: 87.456, attacker: true }, 'ATTACKER', root)
+    expect(stats.attributes['data-status']).toBe('87.46')
+    expect(stats.attributes['data-turn']).toBe('attacker')
+    expect(playerStats({ ...player, status: 40 }, 'WINNER', root).attributes['data-turn']).toBe('winner')
+    expect(playerStats({ ...player, status: 40 }, '40%', root).attributes['data-turn']).toBe('')
+  })
+
   test('a player name is shown as text, never as markup (names come from other players online)', () => {
     const stats = playerStats({ ...player, name: '<img src=x onerror=a()>' }, '90%', root)
     expect(stats.children[0].attributes.innerHTML).toBe('<strong style="color: #ff6b6b">&lt;img src=x onerror=a()&gt;</strong>: 90%')
