@@ -30,6 +30,16 @@ describe('local multiplayer: your ships show while your own board is open', () =
     expect(anyShaded(own)).toBe(false)
   })
 
+  test('placing ships: a closed own board does not hide the ships being placed', async () => {
+    const { doc, players: [first] } = startGame({ humans: 2, placing: true })
+    await settle()
+    document.querySelector('.placement-continue').click()
+    document.querySelector('.placement-randomise').click()
+    tell(doc, false)
+    expect(first.shipFleet.length).toBeGreaterThan(0)
+    expect(shaded(first)).toBe(true)
+  })
+
   test('single player ignores it: the human\'s ships always show', async () => {
     const { doc, players: [human] } = startGame({ humans: 1, robots: 1 })
     await settle()
