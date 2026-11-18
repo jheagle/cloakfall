@@ -80,10 +80,15 @@ to compare rendering changes. `E2E_LIMIT_MS` changes how long a game may take; `
 online check needs port 3002 free (no lobby server already running). They use js-build-tools' page tools
 (`watchPage`, `clickLabel`, `trackMutations`, `serveStatic`); a browser binary is needed once per machine:
 `npx playwright install chromium`.
-
 ## Members
 
 <dl>
+<dt><a href="#version">version</a></dt>
+<dd><p>This build&#39;s version, kept equal to package.json&#39;s by scripts/write-version.mjs (run on every release).</p>
+</dd>
+<dt><a href="#RELEASES_URL">RELEASES_URL</a></dt>
+<dd><p>Where the game&#39;s releases are published, each with its notes.</p>
+</dd>
 <dt><a href="#hasTrait">hasTrait</a></dt>
 <dd><p>The typed version of treeloom&#39;s hasTrait, it narrows an item to the trait it was checked for.</p>
 </dd>
@@ -98,6 +103,46 @@ remote redaction of hidden ships (redactBoard) both read them from here.</p>
 </dd>
 <dt><a href="#gameName">gameName</a></dt>
 <dd><p>The game&#39;s name, as players see it.</p>
+</dd>
+<dt><a href="#TURN_DEADLINE_EVENT">TURN_DEADLINE_EVENT</a></dt>
+<dd><p>The event that tells the banner when the current turn runs out (detail: { deadline: number | null }, a Date.now()
+time, or null for no limit), sent on the document. Online games send it from the server&#39;s pushes
+(network/remoteGame.ts).</p>
+</dd>
+<dt><a href="#FLASH_MS">FLASH_MS</a></dt>
+<dd><p>How long the struck cell flashes.</p>
+</dd>
+<dt><a href="#ONE_BOARD_MAX_WIDTH_PX">ONE_BOARD_MAX_WIDTH_PX</a></dt>
+<dd><p>Wider than this, every board is shown (side by side); narrower, one opponent at a time.</p>
+</dd>
+<dt><a href="#ONE_BOARD_MAX_HEIGHT_PX">ONE_BOARD_MAX_HEIGHT_PX</a></dt>
+<dd><p>Shorter than this is a phone too, however wide: a phone held sideways (an iPhone Air is 912 x 420) has no room
+for every board, so it gets the phone layout as well.</p>
+</dd>
+<dt><a href="#PHONE_MEDIA">PHONE_MEDIA</a></dt>
+<dd><p>The media query for the phone layout: one opponent&#39;s board at a time, and the viewer&#39;s own in a drawer. The
+stylesheets use the same numbers (layouts-custom.sass).</p>
+</dd>
+<dt><a href="#SHOT_ALERT_MS">SHOT_ALERT_MS</a></dt>
+<dd><p>How long a player&#39;s entry says &quot;Hit&quot; / &quot;Miss&quot; after a shot lands on their board.</p>
+</dd>
+<dt><a href="#OWN_BOARD_EVENT">OWN_BOARD_EVENT</a></dt>
+<dd><p>The event the bar sends on <main> when the viewer&#39;s own board opens or closes (detail: { open }): on a phone, its
+drawer; on a wide screen, where it is docked and always in view, open whenever there is one. Local multiplayer
+listens (setup/ownBoardReveal.ts).</p>
+</dd>
+<dt><a href="#MIRRORED_CONTROLS">MIRRORED_CONTROLS</a></dt>
+<dd><p>The controls the panel offers, in order: only those the current game actually has are shown. The sensor scan is in
+the viewer&#39;s own panel when the game&#39;s hint setting is &quot;optional&quot; (playerStats.ts); &quot;Show all ships&quot; is robots-only
+(showShipsControl.ts).</p>
+</dd>
+<dt><a href="#GAME_ACTIONS_QUERY">GAME_ACTIONS_QUERY</a></dt>
+<dd><p>The event the menu sends on <main> when it opens, to ask which game actions apply right now: the game fills in
+detail.actions (setup/gameActions.ts). Nobody answering means no &quot;Game&quot; section.</p>
+</dd>
+<dt><a href="#GAME_ACTION_EVENT">GAME_ACTION_EVENT</a></dt>
+<dd><p>The event the menu sends on <main> once the viewer has confirmed an action, or flipped a setting: detail:
+{ action } (its id), plus { checked } for a setting.</p>
 </dd>
 <dt><a href="#PLACEMENT_TIMEOUT_MS">PLACEMENT_TIMEOUT_MS</a></dt>
 <dd><p>How long players have to finish placing before any still-pending ships are placed at random for them.</p>
@@ -115,17 +160,35 @@ submit can join it without needing its own room-code field.</p>
 <dd><p>The colour each player is identified by, in the order they are created. They are bright enough to read on the dark
 background, and distinct from one another.</p>
 </dd>
+<dt><a href="#ORDER_PICK_CLASS">ORDER_PICK_CLASS</a></dt>
+<dd><p>The class of each player&#39;s name button on the turn-order screen, and how placementListener tells it apart.</p>
+</dd>
+<dt><a href="#LOCAL_TURN_MS">LOCAL_TURN_MS</a></dt>
+<dd><p>How long a human has for a turn when the local turn timer is on: the same as an online game&#39;s (server/gameplay.ts).</p>
+</dd>
 <dt><a href="#defaultShipSpecs">defaultShipSpecs</a></dt>
 <dd><p>Create a default fleet using the standard fleet lengths (5, 4, 3, 3, 2).</p>
-</dd>
-<dt><a href="#STAGE_MS">STAGE_MS</a></dt>
-<dd><p>How long each stage of the robot&#39;s attack is shown for, in turn.</p>
 </dd>
 <dt><a href="#DAMAGED_WEIGHT">DAMAGED_WEIGHT</a></dt>
 <dd><p>Extra weight for placements which explain a ship that is already damaged, relative to a fresh ship.</p>
 </dd>
 <dt><a href="#ADJACENT_WEIGHT">ADJACENT_WEIGHT</a></dt>
 <dd><p>Extra weight for an unattacked cell next to a hit on a ship which is not yet sunk, the partial-hit follow-up.</p>
+</dd>
+<dt><a href="#ROBOT_TURN_MS">ROBOT_TURN_MS</a></dt>
+<dd><p>How long a robot takes over its turn before it fires, so its shots can be followed (the pace three 400 ms stages of
+the robot&#39;s thinking used to set; the robots-only pace setting, CLOA-9, will make this adjustable).</p>
+</dd>
+<dt><a href="#LOBBY_PORT">LOBBY_PORT</a></dt>
+<dd><p>The lobby server&#39;s port (server/lobbyServer.ts).</p>
+</dd>
+<dt><a href="#LOBBY_META_NAME">LOBBY_META_NAME</a></dt>
+<dd><p>The meta tag a page can name its lobby with: <meta name="cloakfall-lobby" content="https://lobby.example.com">.</p>
+</dd>
+<dt><a href="#UNREACHABLE_ERROR">UNREACHABLE_ERROR</a></dt>
+<dd><p>What a lobby call resolves with when the server never answers (not running, unreachable, or too slow). Shown as
+HTML: it links to the status page (status.html, next to the game), which checks the server itself, in a new tab so
+the game&#39;s own screen is kept.</p>
 </dd>
 <dt><a href="#DEMO_ROBOTS">DEMO_ROBOTS</a></dt>
 <dd><p>How many robots play the demo game behind the menu.</p>
@@ -136,13 +199,31 @@ background, and distinct from one another.</p>
 <dt><a href="#demoRoot">demoRoot</a></dt>
 <dd><p>The demo game currently running, if any.</p>
 </dd>
+<dt><a href="#PLAYER_CONTROLS_CLASS">PLAYER_CONTROLS_CLASS</a></dt>
+<dd><p>The class of a player&#39;s own controls (the sensor-scan checkbox today; the in-game control panel later). In online
+play, controls inside it belong to that player alone: the lobby lets their owner use them at any time, even when it
+is someone else&#39;s turn, and nobody else at all (lobbyServer.ts&#39;s gameAction; redactGameState.ts removes them from
+everyone else&#39;s view).</p>
+</dd>
+<dt><a href="#HIT_PAUSE_MS">HIT_PAUSE_MS</a></dt>
+<dd><p>How long a shot&#39;s result stays in view before the turn passes, in local multiplayer: there the whole screen switches
+to the next player&#39;s point of view at once, so without a pause the shooter never saw where their shot landed. Other
+games keep their pace: a robot takes its own time before firing (computerAttack&#39;s ROBOT_TURN_MS), and online every
+player keeps their own view.</p>
+</dd>
 </dl>
 
 ## Constants
 
 <dl>
-<dt><a href="#DEFAULT_URL">DEFAULT_URL</a></dt>
-<dd><p>No server is deployed yet - this only works against a locally-run lobby server (npm run dev:lobby).</p>
+<dt><a href="#pending">pending</a></dt>
+<dd><p>The pending random shot, per game root: whose turn it is waiting on, and its timer.</p>
+</dd>
+<dt><a href="#fullRenderForwarding">fullRenderForwarding</a></dt>
+<dd><p>Whether forwarding was on when each root&#39;s game was last rendered in full; only set while a remote game is shown.
+A push can be reconciled into what is rendered only when forwarding hasn&#39;t changed since: treeloom decides whether
+a listener forwards to the server or runs locally when it binds it, and reconcile keeps every unchanged listener
+bound as it was.</p>
 </dd>
 <dt><a href="#setViewShip">setViewShip</a></dt>
 <dd><p>Set a visible ship part at the given coordinates (shown in the theme&#39;s ship colour).</p>
@@ -173,9 +254,93 @@ should be a single turn. Remote play already blocks the same thing independently
 ## Functions
 
 <dl>
+<dt><a href="#releaseNotesUrl">releaseNotesUrl(forVersion)</a></dt>
+<dd><p>The release notes (&quot;what&#39;s new&quot;) for a version.</p>
+</dd>
 <dt><a href="#queueTimeout">queueTimeout(item, fn, time, ...args)</a></dt>
 <dd><p>The timed queue the given item&#39;s game runs on: steps queued here run one after another, after their delay. Each
-game has its own queue (see gameSession), so two games&#39; turn changes, robot attacks, and animations never interleave.</p>
+game has its own queue (see gameSession), so two games&#39; turn changes, robot attacks, and animations never interleave,
+and a step queued for a game that has since been stopped is skipped.</p>
+</dd>
+<dt><a href="#turnText">turnText(players)</a></dt>
+<dd><p>What the banner says for a turn: the viewer&#39;s own (&quot;Your turn, Ann&quot;: in local multiplayer the player holding the
+device), someone else&#39;s while the viewer waits, or, with no viewer at all (robots only), who is firing. Null between
+turns (nobody firing), when the banner keeps what it said.</p>
+</dd>
+<dt><a href="#secondsLeft">secondsLeft()</a></dt>
+<dd><p>Seconds left until a deadline, never below 0.</p>
+</dd>
+<dt><a href="#createTurnBanner">createTurnBanner(doc)</a></dt>
+<dd><p>Build the banner (not yet in the page: the bar places it).</p>
+</dd>
+<dt><a href="#createShotWatcher">createShotWatcher()</a></dt>
+<dd><p>Track the shot cells already seen. The first scan of a game only records what is there (a game shown part-way
+through, e.g. an online player arriving, must not flash every old shot at once); every later one returns what is new.</p>
+</dd>
+<dt><a href="#flashShot">flashShot(shot, reducedMotion)</a></dt>
+<dd><p>Flash a cell that was just shot: a bright ring that fades, bigger for a hit. With reduced motion, the ring only (no
+growing). Does nothing where the Web Animations API isn&#39;t there.</p>
+</dd>
+<dt><a href="#alive">alive()</a></dt>
+<dd><p>Whether a player is still in the game.</p>
+</dd>
+<dt><a href="#boardToShow">boardToShow(players, state)</a></dt>
+<dd><p>Which board to show (an index), or null when there is nothing to choose between. During the viewer&#39;s own turn: the
+one they chose while it can still be fired at, else the first target. Otherwise (someone else&#39;s turn, or a game
+with no human, robots only): the board the latest shot landed on, else the one they chose, else the first
+opponent still alive. The viewer&#39;s own board is never one of these (it is always shown).</p>
+</dd>
+<dt><a href="#nextBarState">nextBarState(players, state)</a></dt>
+<dd><p>The state after a refresh: the shot counts now, and which board to follow - the one a new shot landed on, unless
+it is the viewer&#39;s own turn (then they are choosing, and their own shots don&#39;t move the view) or the shot was on
+their own board (always shown anyway).</p>
+</dd>
+<dt><a href="#inPlay">inPlay(players, wasInPlay)</a></dt>
+<dd><p>Whether the game is being played, as opposed to the menu, placing ships, choosing the order, or the end. It starts
+when someone first has the turn, and lasts until the boards go, someone wins, or ships are being placed again (a
+restart): between two turns there is a moment when nobody has the turn, which must not hide the bar or forget
+what the viewer chose.</p>
+</dd>
+<dt><a href="#readPlayers">readPlayers(main)</a></dt>
+<dd><p>Read the players from the rendered page: .boards&#39; .player children, with their stats&#39; data attributes.</p>
+</dd>
+<dt><a href="#oneBoardCss">oneBoardCss(shown)</a></dt>
+<dd><p>The stylesheet that shows one opponent&#39;s board on a phone (narrow, or short: held sideways): every other player&#39;s board but the viewer&#39;s own
+is hidden, the boards&#39; own stats lists give way to the bar, and another player&#39;s own controls (their sensor-scan
+box, in local multiplayer) aren&#39;t shown on their board.</p>
+</dd>
+<dt><a href="#statusText">statusText()</a></dt>
+<dd><p>The words for a player&#39;s status in the bar.</p>
+</dd>
+<dt><a href="#setText">setText()</a></dt>
+<dd><p>Set a text only when it differs, so an unchanged entry isn&#39;t touched at all.</p>
+</dd>
+<dt><a href="#createEntry">createEntry(player, actions)</a></dt>
+<dd><p>One entry&#39;s elements: a button with the player&#39;s name, status and a &quot;firing&quot; marker (shown only on the attacker&#39;s
+entry). An opponent&#39;s shows their board; the viewer&#39;s own opens their board&#39;s drawer on a phone. Built once per
+player and then updated in place (updateEntry).</p>
+</dd>
+<dt><a href="#setAttribute">setAttribute()</a></dt>
+<dd><p>Set an attribute only when it differs (or remove it, for null).</p>
+</dd>
+<dt><a href="#updateEntry">updateEntry(item, player, shown, ownOpen, alert)</a></dt>
+<dd><p>Bring an entry up to date, changing only what differs.</p>
+</dd>
+<dt><a href="#renderBar">renderBar(list, players, shown, ownOpen, actions, alerts)</a></dt>
+<dd><p>Show one entry per player: the entries are rebuilt only when the players themselves change (a new game, or whose
+own entry it is, as in local multiplayer); otherwise each is updated in place, so a turn change touches a few
+texts and attributes rather than the whole bar.</p>
+</dd>
+<dt><a href="#installPlayerBar">installPlayerBar(main)</a></dt>
+<dd><p>Add the player bar to the page and keep it in step with <main>. Returns a function that removes it again.</p>
+<p>On a phone it also opens and closes the drawer the viewer&#39;s own board lives in (the CSS in layouts-custom.sass
+moves the role-own board into it, and dims the page around it): body.own-board-open. It closes on Escape, on a tap
+outside it, when the game ends, and when the board it shows stops being the viewer&#39;s (local multiplayer: every
+turn, so nobody sees another player&#39;s ships by accident). A tap outside only closes it: it never reaches the board
+underneath, so closing the drawer can&#39;t fire a shot.</p>
+</dd>
+<dt><a href="#createControlPanel">createControlPanel(main)</a></dt>
+<dd><p>Build the ☰ button and its panel (not yet in the page: the bar places them).</p>
 </dd>
 <dt><a href="#getLowStatusItems">getLowStatusItems(items)</a></dt>
 <dd><p>Given an array of items, return all items which have the lowest status property</p>
@@ -307,7 +472,11 @@ it ends (an invalid second click is refused and the start is forgotten) - exactl
 two-click mechanic, just resolved from the clicked board&#39;s own owner instead of a shared &quot;current player&quot;.</p>
 </dd>
 <dt><a href="#pickOrderPlayer">pickOrderPlayer()</a></dt>
-<dd><p>A click on a player&#39;s own board while the order is being set (see beginOrderSet) - adds them to the order.</p>
+<dd><p>A click on a player&#39;s board, or a tap on their name, while the order is being set (see beginOrderSet) - adds them
+to the order.</p>
+</dd>
+<dt><a href="#pickRemoteOrder">pickRemoteOrder()</a></dt>
+<dd><p>A tap on a player&#39;s name while the order is being set - the same as clicking their board.</p>
 </dd>
 <dt><a href="#handleRemoteBoardClick">handleRemoteBoardClick()</a></dt>
 <dd><p>A board click while a remote placement/ordering phase is running - routed by the current stage.</p>
@@ -364,11 +533,10 @@ room state.</p>
 <dd><p>Leave whatever room is open and show the game types again, clearing any status message - or, with a
 message (the room closed on its own), show it on the Host/Join choice panel instead of the tiles.</p>
 </dd>
-<dt><a href="#enterWaitingRoom">enterWaitingRoom()</a></dt>
-<dd><p>Once a room is created or joined (or a finished game&#39;s Play Again brings everyone back to it - see
-remotePlayAgainListener.ts), watch it for changes and show the waiting room. Puts the room&#39;s own code in
-the address bar too, so the host (or anyone else) can just copy the current URL to share a join link - see
-showRemoteEntry, which reads it back out on the receiving end.</p>
+<dt><a href="#returnToWaitingRoom">returnToWaitingRoom(root, state)</a></dt>
+<dd><p>Leave the game on screen and show the room&#39;s waiting room again: the host ended the game for everyone, or restarted
+it (the new game&#39;s first push then arrives here, as for any game). The same steps as Play Again after a game
+(remotePlayAgainListener.ts).</p>
 </dd>
 <dt><a href="#remoteListener">remoteListener(e, target)</a></dt>
 <dd><p>The Online Multiplayer tile, its Host/Join choice and forms, and the waiting room it leads to. Room/presence
@@ -386,6 +554,11 @@ the waiting room.</p>
 remoteGame.ts&#39;s enterRemoteGame) - the server&#39;s own copy of this listener name is a trivial stand-in, never
 meant to actually run (see server/gameplay.ts&#39;s buildIsolatedRoot).</p>
 </dd>
+<dt><a href="#leaveOnlineGame">leaveOnlineGame(root)</a></dt>
+<dd><p>Leave the online game this page is in and go back to the main menu (see remoteLeaveListener). Also the game menu&#39;s
+Leave game (setup/gameActions.ts), mid-game included: the server takes a player who disconnects out of the room
+(their turns then time out to random shots), and closes the room for everyone when the host does.</p>
+</dd>
 <dt><a href="#presetListener">presetListener(e, target)</a></dt>
 <dd><p>The game types on the entry screen. Each reveals the lobby for that type (see showLobby). Back hides the lobby
 again. Presets (and Back) are told apart by their class names, so one listener handles all of them.</p>
@@ -399,10 +572,8 @@ setting. Only the settings carry over, not the fleets or the board state - a new
 for multiplayer same as the first time.</p>
 </dd>
 <dt><a href="#placementListener">placementListener(e, target)</a></dt>
-<dd><p>The placement buttons: Continue (after the handoff), Randomise, and Done. They are told apart by class name.</p>
-</dd>
-<dt><a href="#setBadge">setBadge(player, text)</a></dt>
-<dd><p>The label above a player&#39;s board, which shows their place in the order.</p>
+<dd><p>The placement buttons: Continue (after the handoff), Randomise, Done, Random and Set order, and each player&#39;s name
+on the turn-order screen (orderPicks.ts, local and online alike). They are told apart by class name.</p>
 </dd>
 <dt><a href="#nameInput">nameInput()</a></dt>
 <dd><p>The name field on the placement panel.</p>
@@ -457,13 +628,13 @@ human, or robots only, the boards are hidden and everyone is asked to confirm. T
 is showing, so they cannot be seen fading out.</p>
 </dd>
 <dt><a href="#chooseOrder">chooseOrder(item)</a></dt>
-<dd><p>Set the order by clicking the boards: each click adds that player to the end of the order.</p>
-</dd>
-<dt><a href="#ordinal">ordinal(place)</a></dt>
-<dd><p>The word for a place in the order: 1st, 2nd, 3rd, then 4th and so on.</p>
+<dd><p>Set the order by tapping the players&#39; names: each tap adds that player to the end of the order.</p>
 </dd>
 <dt><a href="#pickPlayer">pickPlayer(session, board)</a></dt>
 <dd><p>Add a clicked board&#39;s player to the end of the order, and finish once everyone is in it.</p>
+</dd>
+<dt><a href="#pickOrder">pickOrder(item, player)</a></dt>
+<dd><p>A tap on a player&#39;s name while the order is being set: add them to it (the same as clicking their board).</p>
 </dd>
 <dt><a href="#showOrder">showOrder(session)</a></dt>
 <dd><p>Show the order which has been set, and wait for Continue to start.</p>
@@ -494,6 +665,51 @@ cells, inside the board, and not touching a ship which is already there.</p>
 <dt><a href="#placeShip">placeShip(board, shipInfo, start, end, view)</a></dt>
 <dd><p>Place a ship from the player&#39;s chosen start and end points, if the placement is valid. Returns false if it is not.</p>
 </dd>
+<dt><a href="#revealOwnShips">revealOwnShips(players, open)</a></dt>
+<dd><p>Local multiplayer (hot-seat) only: a player&#39;s ships stay hidden in play, since others share the screen, but show on
+their own board while they have it open on their own turn. Not during placement, which shows the placing player&#39;s
+ships itself. Every human&#39;s ships are hidden first, so the last
+player&#39;s never stay shown after the device is passed on.</p>
+</dd>
+<dt><a href="#listenForOwnBoard">listenForOwnBoard(root)</a></dt>
+<dd><p>Listen for the player bar&#39;s own-board event (OWN_BOARD_EVENT) on the game&#39;s <main>, once per page. It acts only in a local
+multiplayer game: single player always shows the human&#39;s own ships, robots-only has no own board, and an online
+game (rendered from the server&#39;s pushes, root.forwardEvents set) has the server decide what each player sees.</p>
+</dd>
+<dt><a href="#orderPick">orderPick()</a></dt>
+<dd><p>A player&#39;s name button for the turn-order screen: while the order is chosen, every player is shown as just this
+(their board and stats are hidden, see game-pieces.sass), and tapping it adds them to the order. Hidden the rest of
+the time. One listener serves local and online play: online, the click is forwarded to the server like any other.</p>
+</dd>
+<dt><a href="#ordinal">ordinal(place)</a></dt>
+<dd><p>The word for a place in the order: 1st, 2nd, 3rd, then 4th and so on.</p>
+</dd>
+<dt><a href="#setOrderBadge">setOrderBadge(player, text)</a></dt>
+<dd><p>The label above a player&#39;s name (or board), which shows their place in the order; &#39;&#39; clears it.</p>
+</dd>
+<dt><a href="#showOrderPicks">showOrderPicks(players, shown, pickable)</a></dt>
+<dd><p>Show every player as a name button (shown), or as their board again. A button can be tapped only while
+<code>pickable</code> says so for its player: during Set order, for anyone not yet in the order.</p>
+</dd>
+<dt><a href="#tellDeadline">tellDeadline()</a></dt>
+<dd><p>Tell the turn banner when this turn runs out (null: no limit).</p>
+</dd>
+<dt><a href="#stop">stop()</a></dt>
+<dd><p>Cancel the root&#39;s pending random shot, if any, and tell the banner there is no limit now.</p>
+</dd>
+<dt><a href="#start">start(root, player)</a></dt>
+<dd><p>Start a human&#39;s turn clock: when it runs out, a random shot is fired for them (randomAttack, as an online game&#39;s
+server does), unless the turn has ended or the game was stopped (quit, restart) in the meantime.</p>
+</dd>
+<dt><a href="#syncLocalTurnTimer">syncLocalTurnTimer(player)</a></dt>
+<dd><p>Keep the local turn clock in step with a player whose attacker flag just changed (updatePlayer.ts). A human&#39;s turn
+starts it when the timer is on; any other start (a robot) or the end of the clocked player&#39;s turn stops it. Online
+games keep their own server-side clock (session.onAttackerChanged), so nothing happens there.</p>
+</dd>
+<dt><a href="#setLocalTurnTimer">setLocalTurnTimer(root, on)</a></dt>
+<dd><p>Switch the local turn timer on or off (the game menu): it applies at once to the human whose turn it is (a fresh full
+turn), and stays as set for the next games on this page.</p>
+</dd>
 <dt><a href="#validPlacements">validPlacements(matrix, shipLength)</a></dt>
 <dd><p>Every straight, horizontal or vertical, start and end point of a ship of this length which fits on the board without
 touching a ship already there. Ships only go along one axis for now (no diagonals, z is always 0) - treeloom-matrix&#39;s
@@ -513,6 +729,11 @@ The optional parameter view will set the visibility of the ships.</p>
 same way. A game gets its own session the first time anything asks for it, and it is garbage-collected along with
 its root once nothing else references the game any more - there is nothing to explicitly tear down.</p>
 </dd>
+<dt><a href="#stopGame">stopGame(item)</a></dt>
+<dd><p>Stop the game running on this root, mid-game included: every step already queued for it (a robot&#39;s next shot, a
+turn change) is skipped instead of run, any placement in progress is dropped, and the attack lock is released. The
+root keeps its settings, so a new game can start on it (startNewGame calls this first).</p>
+</dd>
 <dt><a href="#gameLayout">gameLayout(doc)</a></dt>
 <dd><p>The page&#39;s landmarks: a header with the page&#39;s h1 (visually hidden, so the game looks the same, but a screen reader
 user can find the page by its heading) and the main element the game renders into. Reuses them when the page
@@ -527,6 +748,22 @@ itself, so everything the game renders is inside the main landmark. The tree kee
 </dd>
 <dt><a href="#presetForMode">presetForMode(mode)</a></dt>
 <dd><p>The preset for a given game mode, so the lobby can be shown for it without a preset button having been clicked.</p>
+</dd>
+<dt><a href="#isOnline">isOnline()</a></dt>
+<dd><p>Whether this page is showing an online game (rendered from the server&#39;s pushes: remoteGame.ts sets forwarding).</p>
+</dd>
+<dt><a href="#gameActionsFor">gameActionsFor(root)</a></dt>
+<dd><p>The game menu&#39;s &quot;Game&quot; section for what is on screen now. Local games (single player, local multiplayer, robots
+only): Restart with the same settings, and Quit to the main menu. Online, the host: Restart (a new game for everyone,
+same settings) and Return to lobby (everyone back to the waiting room), both through the server&#39;s hostGameAction;
+everyone: Leave game, which for the host ends it for everyone (the server closes a room its host leaves).</p>
+</dd>
+<dt><a href="#runGameAction">runGameAction(root, action, checked)</a></dt>
+<dd><p>Do what the viewer confirmed in the game menu.</p>
+</dd>
+<dt><a href="#listenForGameActions">listenForGameActions(root)</a></dt>
+<dd><p>Answer the game menu (view/controlPanel.ts) on the game&#39;s <main>, once per page: which actions apply, and running
+the one confirmed.</p>
 </dd>
 <dt><a href="#buildShip">buildShip(shipInfo, line, matrix, view)</a></dt>
 <dd><p>Generate a ship with the provided line of points.
@@ -564,25 +801,13 @@ may want it.</p>
 </dd>
 <dt><a href="#selectTargetCoordinate">selectTargetCoordinate(victim)</a></dt>
 <dd><p>Choose which coordinate to attack, in layers: the density model first, then the checkerboard over every unattacked
-cell. The density scores are shown as a heat map, so the robot&#39;s thinking can be seen before the checkerboard narrows
-the choice.</p>
+cell. Nothing is drawn while choosing: only the shot shows (only the current attacker is highlighted).</p>
 </dd>
 <dt><a href="#shade">shade(intensity)</a></dt>
-<dd><p>A faint yellow for the weakest cells up to a solid one for the strongest, so the spread of the robot&#39;s thinking shows.</p>
+<dd><p>A faint yellow for the weakest cells up to a solid one for the strongest, so the spread of the scores shows.</p>
 </dd>
 <dt><a href="#paint">paint(victim, point, color)</a></dt>
-<dd></dd>
-<dt><a href="#resetTargets">resetTargets(data)</a></dt>
-<dd></dd>
-<dt><a href="#outlineBoard">outlineBoard(player, color)</a></dt>
-<dd><p>Colour every row of a player&#39;s board, which is how a whole board is outlined.</p>
-</dd>
-<dt><a href="#displayTargets">displayTargets(cells, target, victim, opponents)</a></dt>
-<dd><p>The stages of the robot&#39;s thinking, shown in turn: the boards it is choosing between, the chosen board, the cells it
-weighs, then the cell it picks at random. The shot itself comes after the last stage (see computerAttack).</p>
-</dd>
-<dt><a href="#clearTargets">clearTargets(victim, opponents)</a></dt>
-<dd><p>Take the display away once the robot has chosen: the heat map and every board outline.</p>
+<dd><p>Colour one cell&#39;s border (the sensor scan&#39;s shading, or back to normal).</p>
 </dd>
 <dt><a href="#buildShotState">buildShotState(victim)</a></dt>
 <dd><p>Build what the robot is allowed to know about a victim: which cells were attacked, which of those were hits (the
@@ -650,8 +875,15 @@ nothing on it, instead of just failing to show the one thing that is actually sa
 something else clearing the page for a fresh game (without going through leaveRemoteGame) can detach the old
 one from the document while this module&#39;s own reference to it lives on.</p>
 </dd>
-<dt><a href="#setCountdownDeadline">setCountdownDeadline()</a></dt>
-<dd><p>Start, update, or stop the visual countdown, as each new deadline (or its absence) comes in.</p>
+<dt><a href="#showCornerCountdown">showCornerCountdown()</a></dt>
+<dd><p>Start, update, or stop the corner countdown (now only for placing ships), as each new deadline comes in.</p>
+</dd>
+<dt><a href="#tellTurnDeadline">tellTurnDeadline()</a></dt>
+<dd><p>Tell the turn banner (view/turnBanner.ts) when the current turn runs out, or that it has no limit (null).</p>
+</dd>
+<dt><a href="#setCountdownDeadline">setCountdownDeadline(info)</a></dt>
+<dd><p>Show each new deadline (or its absence) as a push brings it: a turn&#39;s in the turn banner, beside whose turn it is;
+placing ships&#39; in the corner countdown (the banner is only there during play).</p>
 </dd>
 <dt><a href="#stopCountdown">stopCountdown()</a></dt>
 <dd><p>Remove the countdown entirely - called once the remote game is left.</p>
@@ -663,11 +895,30 @@ one from the document while this module&#39;s own reference to it lives on.</p>
 <dd><p>The cell which has keyboard focus, as the index of its board among the rendered boards and its point, so focus can
 be put back on the same cell after a re-render; null when focus is not on a board cell.</p>
 </dd>
-<dt><a href="#renderInto">renderInto(root, redactedBody)</a></dt>
+<dt><a href="#inflateBody">inflateBody(redactedBody, focus)</a></dt>
+<dd><p>Inflate a redacted body, with the boards&#39; keyboard navigation (navigableGrid) put back: it is function listeners,
+which json drops. The Tab stop stays on the cell that had focus. Its listeners run locally even while events are
+forwarded (treeloom only forwards named listeners), and Enter / Space click the cell, which is forwarded like a
+mouse click.</p>
+</dd>
+<dt><a href="#renderFresh">renderFresh(root, redactedBody)</a></dt>
 <dd><p>Replace the root&#39;s own body content with a freshly-inflated redacted body&#39;s children, rendered directly as the
 body&#39;s own children - not nested one level deeper under some other wrapper - so a path captured from this tree
 (getItemPath) and one resolved against the server&#39;s own root (getItemByPath) agree: both are root -&gt; body -&gt;
 [boards, placement panel], the exact shape redactGameBody sends.</p>
+</dd>
+<dt><a href="#renderChanges">renderChanges(root, redactedBody)</a></dt>
+<dd><p>Update what is rendered to match a push, changing only what differs (treeloom&#39;s reconcile): elements, focus and
+keyboard navigation stay where they are. The push&#39;s top level is a <body> while the game renders into the root&#39;s
+own body (a <main> in a browser, see gameRoot), so only the push&#39;s children are reconciled into root.body: the
+inflated top item takes everything else from root.body (its node name, attributes, data; the structure fields
+reconcile keeps from existing anyway), so root.body itself is unchanged.
+Should reconcile ever throw (it refuses a top-level node mismatch, which this rules out), the push is rendered in
+full instead, so the page never stays on a stale state.</p>
+</dd>
+<dt><a href="#renderInto">renderInto(root, redactedBody)</a></dt>
+<dd><p>Show a push: reconciled into what is already rendered when it can be (same game, forwarding unchanged), otherwise
+rendered in full (the first push, and the switches between a game and its final scores).</p>
 </dd>
 <dt><a href="#stopForwarding">stopForwarding()</a></dt>
 <dd><p>Stop forwarding (and the countdown, which can&#39;t be running once the game has ended anyway) without touching
@@ -680,7 +931,7 @@ its next click instead of being forwarded into a game that no longer exists.</p>
 one (a second documentDomItem() would claim the same real document.head/body the app&#39;s own root already has -
 exactly the collision the server&#39;s own per-room roots had to avoid, see server/gameplay.ts). Every click/change
 on the rendered tree is forwarded to the server instead of run locally (setForwardEvents) - the server&#39;s own
-receiveForwardedEvent resolves and dispatches it, and the resulting gameUpdate re-renders this same tree fresh.
+receiveForwardedEvent resolves and dispatches it, and the resulting gameUpdate is reconciled into this same tree.
 Leaving the lobby&#39;s own listeners (presetListener, remoteListener, ...) alone is safe because the lobby&#39;s own
 markup is no longer in the tree by the time this runs - clearChildren above already removed it.</p>
 <p>Forwarding comes back off once the game actually ends (see isGameOver/stopForwarding) - the final-score
@@ -689,6 +940,11 @@ again for whatever the next gameUpdate turns out to be once Play Again succeeds 
 </dd>
 <dt><a href="#leaveRemoteGame">leaveRemoteGame()</a></dt>
 <dd><p>Stop forwarding and clear whatever the remote game last rendered, so the root can go back to running locally.</p>
+</dd>
+<dt><a href="#removeHeatShading">removeHeatShading(board)</a></dt>
+<dd><p>Take the sensor scan&#39;s shading (attack/heatHint.ts: each cell&#39;s border colour) off a board clone, for every viewer
+but the attacker who switched it on. The scan only uses what everyone can see, so this hides nothing secret: it
+keeps one player&#39;s hint, and its noise, off everyone else&#39;s screen.</p>
 </dd>
 <dt><a href="#redactBoard">redactBoard(board, ownBoard)</a></dt>
 <dd><p>A redacted clone of a board: every tile is kept (same count, same tree position - nothing is removed, so it
@@ -731,7 +987,7 @@ their business in the first place. Name and ship list are never secret, so nothi
 </dd>
 <dt><a href="#redactPlayer">redactPlayer(player, viewer)</a></dt>
 <dd><p>One player, redacted for a given viewer: a clone of the real player, with its board and fleet redacted per
-redactBoard/redactShip, its own placement panel disabled, and its own hint checkbox removed entirely, all
+redactBoard/redactShip (and the sensor scan&#39;s shading removed unless the viewer is the attacker who has it on), its own placement panel disabled, and its own hint checkbox removed entirely, all
 unless this is that player&#39;s own viewer. Everything else (name, colour, robot/human, overall status, whose
 turn it is) passes through unchanged. children is kept in step with whichever of its own entries changed, by
 index, rather than assumed to always be exactly [turn-badge, board, stats] - a remote game&#39;s own fourth
@@ -786,9 +1042,29 @@ same as today - the host needs to see and click every player&#39;s board to set 
 over entirely (stage is null), applyPlayerView marks each player&#39;s role for this viewer, so the client&#39;s own
 CSS can style a <code>summary</code> player plainer.</p>
 </dd>
+<dt><a href="#configuredLobbyUrl">configuredLobbyUrl(doc)</a></dt>
+<dd><p>The lobby URL a page names in its cloakfall-lobby meta tag, or null when it names none (no tag, no document).</p>
+</dd>
+<dt><a href="#lobbyUrl">lobbyUrl(location, configured)</a></dt>
+<dd><p>The lobby server&#39;s URL. A page that names its lobby with a cloakfall-lobby meta tag (the website&#39;s copy of the game,
+against the hosted lobby) uses that tag&#39;s origin, when it is an http: or https: URL; anything else in the tag is ignored. Without
+one, it is port 3002 on the host the page was loaded from, so a phone that opened the game from the laptop&#39;s LAN
+address (<a href="http://192.168.x.y:8080">http://192.168.x.y:8080</a>) reaches the laptop&#39;s lobby (npm run serve:lobby), not itself. Outside a page (Node,
+tests), or for a page opened from a file, it is localhost.</p>
+</dd>
 <dt><a href="#connectLobbySocket">connectLobbySocket(url)</a></dt>
 <dd><p>The lobby socket, connecting on first use. A test can connect it to its own ephemeral server before triggering any
 UI action, by calling this directly with that server&#39;s URL - the UI&#39;s own calls below then reuse that connection.</p>
+</dd>
+<dt><a href="#setLobbyTimeout">setLobbyTimeout(ms)</a></dt>
+<dd><p>How long a lobby call waits for the server&#39;s answer before giving up with UNREACHABLE_ERROR (default 8 seconds).
+Tests shorten it.</p>
+</dd>
+<dt><a href="#request">request(event, payload)</a></dt>
+<dd><p>Send a lobby call and resolve with the server&#39;s answer, or with <code>{ error: UNREACHABLE_ERROR }</code> if none arrives in
+time. Without the timeout, socket.io buffers the call while it keeps trying to connect, so an unreachable lobby left
+the screen on &quot;Looking up room...&quot; forever. A call that timed out is dropped from socket.io&#39;s buffer, so it is not
+sent later if the connection comes back.</p>
 </dd>
 <dt><a href="#disconnectLobbySocket">disconnectLobbySocket()</a></dt>
 <dd><p>Close the lobby socket and forget it, so the next connectLobbySocket call starts fresh.</p>
@@ -825,6 +1101,18 @@ remaining capacity.</p>
 Replaces any previous listener rather than adding another - a rematch (see remotePlayAgainListener.ts,
 server/lobbyServer.ts&#39;s relaxed startGame guard) re-enters a second real game on the same connection, which
 would otherwise leave the first game&#39;s own render loop listening alongside the new one, forever.</p>
+</dd>
+<dt><a href="#offGameUpdate">offGameUpdate()</a></dt>
+<dd><p>Stop listening for game updates (leaving a game), without connecting a socket that isn&#39;t there. A stopped game&#39;s
+late push must never be drawn over whatever comes next (the waiting room, the menu).</p>
+</dd>
+<dt><a href="#hostGameAction">hostGameAction()</a></dt>
+<dd><p>The host&#39;s game menu, mid-game: end the game for everyone and go back to the waiting room (&#39;lobby&#39;), or start
+a new one with the same settings (&#39;restart&#39;). See server/lobbyServer.ts&#39;s hostGameAction.</p>
+</dd>
+<dt><a href="#onBackToLobby">onBackToLobby()</a></dt>
+<dd><p>Be told when the host has ended the game and everyone goes back to the waiting room (with the room&#39;s state).
+Replaces any previous listener.</p>
 </dd>
 <dt><a href="#sendGameAction">sendGameAction()</a></dt>
 <dd><p>Forward a user interaction to the server instead of running its listener locally - see setForwardEvents.</p>
@@ -961,8 +1249,13 @@ show a target cursor and a highlight when hovered. Tiles keep their own class (&
 <dt><a href="#clearValidTargets">clearValidTargets(victim)</a></dt>
 <dd><p>Remove the markers when the turn passes.</p>
 </dd>
+<dt><a href="#hitPause">hitPause(attacker)</a></dt>
+<dd><p>The pause before the turn passes after this attacker&#39;s shot: HIT_PAUSE_MS in local multiplayer, none otherwise.
+Online rooms run the same game code on the server (their session has onAttackerChanged), so they are told apart.</p>
+</dd>
 <dt><a href="#updateScore">updateScore(hitShip, sunkShip, players)</a></dt>
-<dd><p>Update all game stats after each player round</p>
+<dd><p>Update all game stats after each player round: pass the turn (after a short pause in local multiplayer, with the
+attack lock on so nothing else can be fired meanwhile), or end the game.</p>
 </dd>
 <dt><a href="#updatePlayerStats">updatePlayerStats(player, status)</a></dt>
 <dd></dd>
@@ -970,8 +1263,8 @@ show a target cursor and a highlight when hovered. Tiles keep their own class (&
 <dd><p>Track player stats such as attacks and turns</p>
 </dd>
 <dt><a href="#shipsListener">shipsListener(e, target)</a></dt>
-<dd><p>The ship toggles. A player&#39;s own checkbox (one-player game) shows or hides their ships. The all-ships control
-(robots-only game) does the same for every board at once.</p>
+<dd><p>The robots-only game&#39;s &quot;Show all ships&quot; control: shows or hides the ships on every board at once. (Single player&#39;s
+own &quot;Show my ships&quot; checkbox is gone: the human&#39;s own ships always show.)</p>
 </dd>
 <dt><a href="#randomAttack">randomAttack(attacker, players)</a></dt>
 <dd><p>Attack a random still-unhit cell on a random still-afloat opponent&#39;s board - no targeting logic at all,
@@ -1036,6 +1329,18 @@ exactly one of the two is ever active for a given game, never both.</p>
 </dd>
 </dl>
 
+<a name="version"></a>
+
+## version
+This build's version, kept equal to package.json's by scripts/write-version.mjs (run on every release).
+
+**Kind**: global variable  
+<a name="RELEASES_URL"></a>
+
+## RELEASES\_URL
+Where the game's releases are published, each with its notes.
+
+**Kind**: global variable  
 <a name="hasTrait"></a>
 
 ## hasTrait
@@ -1086,6 +1391,76 @@ A player's own ship, when shown (placement, "Show my ships").
 The game's name, as players see it.
 
 **Kind**: global variable  
+<a name="TURN_DEADLINE_EVENT"></a>
+
+## TURN\_DEADLINE\_EVENT
+The event that tells the banner when the current turn runs out (detail: { deadline: number | null }, a Date.now()
+time, or null for no limit), sent on the document. Online games send it from the server's pushes
+(network/remoteGame.ts).
+
+**Kind**: global variable  
+<a name="FLASH_MS"></a>
+
+## FLASH\_MS
+How long the struck cell flashes.
+
+**Kind**: global variable  
+<a name="ONE_BOARD_MAX_WIDTH_PX"></a>
+
+## ONE\_BOARD\_MAX\_WIDTH\_PX
+Wider than this, every board is shown (side by side); narrower, one opponent at a time.
+
+**Kind**: global variable  
+<a name="ONE_BOARD_MAX_HEIGHT_PX"></a>
+
+## ONE\_BOARD\_MAX\_HEIGHT\_PX
+Shorter than this is a phone too, however wide: a phone held sideways (an iPhone Air is 912 x 420) has no room
+for every board, so it gets the phone layout as well.
+
+**Kind**: global variable  
+<a name="PHONE_MEDIA"></a>
+
+## PHONE\_MEDIA
+The media query for the phone layout: one opponent's board at a time, and the viewer's own in a drawer. The
+stylesheets use the same numbers (layouts-custom.sass).
+
+**Kind**: global variable  
+<a name="SHOT_ALERT_MS"></a>
+
+## SHOT\_ALERT\_MS
+How long a player's entry says "Hit" / "Miss" after a shot lands on their board.
+
+**Kind**: global variable  
+<a name="OWN_BOARD_EVENT"></a>
+
+## OWN\_BOARD\_EVENT
+The event the bar sends on <main> when the viewer's own board opens or closes (detail: { open }): on a phone, its
+drawer; on a wide screen, where it is docked and always in view, open whenever there is one. Local multiplayer
+listens (setup/ownBoardReveal.ts).
+
+**Kind**: global variable  
+<a name="MIRRORED_CONTROLS"></a>
+
+## MIRRORED\_CONTROLS
+The controls the panel offers, in order: only those the current game actually has are shown. The sensor scan is in
+the viewer's own panel when the game's hint setting is "optional" (playerStats.ts); "Show all ships" is robots-only
+(showShipsControl.ts).
+
+**Kind**: global variable  
+<a name="GAME_ACTIONS_QUERY"></a>
+
+## GAME\_ACTIONS\_QUERY
+The event the menu sends on <main> when it opens, to ask which game actions apply right now: the game fills in
+detail.actions (setup/gameActions.ts). Nobody answering means no "Game" section.
+
+**Kind**: global variable  
+<a name="GAME_ACTION_EVENT"></a>
+
+## GAME\_ACTION\_EVENT
+The event the menu sends on <main> once the viewer has confirmed an action, or flipped a setting: detail:
+{ action } (its id), plus { checked } for a setting.
+
+**Kind**: global variable  
 <a name="PLACEMENT_TIMEOUT_MS"></a>
 
 ## PLACEMENT\_TIMEOUT\_MS
@@ -1114,6 +1489,18 @@ The colour each player is identified by, in the order they are created. They are
 background, and distinct from one another.
 
 **Kind**: global variable  
+<a name="ORDER_PICK_CLASS"></a>
+
+## ORDER\_PICK\_CLASS
+The class of each player's name button on the turn-order screen, and how placementListener tells it apart.
+
+**Kind**: global variable  
+<a name="LOCAL_TURN_MS"></a>
+
+## LOCAL\_TURN\_MS
+How long a human has for a turn when the local turn timer is on: the same as an online game's (server/gameplay.ts).
+
+**Kind**: global variable  
 <a name="defaultShipSpecs"></a>
 
 ## defaultShipSpecs
@@ -1126,12 +1513,6 @@ Create a default fleet using the standard fleet lengths (5, 4, 3, 3, 2).
 | matrix | 
 | view | 
 
-<a name="STAGE_MS"></a>
-
-## STAGE\_MS
-How long each stage of the robot's attack is shown for, in turn.
-
-**Kind**: global variable  
 <a name="DAMAGED_WEIGHT"></a>
 
 ## DAMAGED\_WEIGHT
@@ -1142,6 +1523,33 @@ Extra weight for placements which explain a ship that is already damaged, relati
 
 ## ADJACENT\_WEIGHT
 Extra weight for an unattacked cell next to a hit on a ship which is not yet sunk, the partial-hit follow-up.
+
+**Kind**: global variable  
+<a name="ROBOT_TURN_MS"></a>
+
+## ROBOT\_TURN\_MS
+How long a robot takes over its turn before it fires, so its shots can be followed (the pace three 400 ms stages of
+the robot's thinking used to set; the robots-only pace setting, CLOA-9, will make this adjustable).
+
+**Kind**: global variable  
+<a name="LOBBY_PORT"></a>
+
+## LOBBY\_PORT
+The lobby server's port (server/lobbyServer.ts).
+
+**Kind**: global variable  
+<a name="LOBBY_META_NAME"></a>
+
+## LOBBY\_META\_NAME
+The meta tag a page can name its lobby with: <meta name="cloakfall-lobby" content="https://lobby.example.com">.
+
+**Kind**: global variable  
+<a name="UNREACHABLE_ERROR"></a>
+
+## UNREACHABLE\_ERROR
+What a lobby call resolves with when the server never answers (not running, unreachable, or too slow). Shown as
+HTML: it links to the status page (status.html, next to the game), which checks the server itself, in a new tab so
+the game's own screen is kept.
 
 **Kind**: global variable  
 <a name="DEMO_ROBOTS"></a>
@@ -1162,10 +1570,37 @@ The pause after a demo game is won, before the next one starts.
 The demo game currently running, if any.
 
 **Kind**: global variable  
-<a name="DEFAULT_URL"></a>
+<a name="PLAYER_CONTROLS_CLASS"></a>
 
-## DEFAULT\_URL
-No server is deployed yet - this only works against a locally-run lobby server (npm run dev:lobby).
+## PLAYER\_CONTROLS\_CLASS
+The class of a player's own controls (the sensor-scan checkbox today; the in-game control panel later). In online
+play, controls inside it belong to that player alone: the lobby lets their owner use them at any time, even when it
+is someone else's turn, and nobody else at all (lobbyServer.ts's gameAction; redactGameState.ts removes them from
+everyone else's view).
+
+**Kind**: global variable  
+<a name="HIT_PAUSE_MS"></a>
+
+## HIT\_PAUSE\_MS
+How long a shot's result stays in view before the turn passes, in local multiplayer: there the whole screen switches
+to the next player's point of view at once, so without a pause the shooter never saw where their shot landed. Other
+games keep their pace: a robot takes its own time before firing (computerAttack's ROBOT_TURN_MS), and online every
+player keeps their own view.
+
+**Kind**: global variable  
+<a name="pending"></a>
+
+## pending
+The pending random shot, per game root: whose turn it is waiting on, and its timer.
+
+**Kind**: global constant  
+<a name="fullRenderForwarding"></a>
+
+## fullRenderForwarding
+Whether forwarding was on when each root's game was last rendered in full; only set while a remote game is shown.
+A push can be reconciled into what is rendered only when forwarding hasn't changed since: treeloom decides whether
+a listener forwards to the server or runs locally when it binds it, and reconcile keeps every unchanged listener
+bound as it was.
 
 **Kind**: global constant  
 <a name="setViewShip"></a>
@@ -1207,11 +1642,23 @@ should be a single turn. Remote play already blocks the same thing independently
 (lobbyServer.ts's gameAction handler), so this is redundant there - but it costs nothing to keep uniform.
 
 **Kind**: global constant  
+<a name="releaseNotesUrl"></a>
+
+## releaseNotesUrl(forVersion)
+The release notes ("what's new") for a version.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| forVersion | Defaults to this build's own. |
+
 <a name="queueTimeout"></a>
 
 ## queueTimeout(item, fn, time, ...args)
 The timed queue the given item's game runs on: steps queued here run one after another, after their delay. Each
-game has its own queue (see gameSession), so two games' turn changes, robot attacks, and animations never interleave.
+game has its own queue (see gameSession), so two games' turn changes, robot attacks, and animations never interleave,
+and a step queued for a game that has since been stopped is skipped.
 
 **Kind**: global function  
 
@@ -1222,6 +1669,287 @@ game has its own queue (see gameSession), so two games' turn changes, robot atta
 | time | <code>0</code> | 
 | ...args |  | 
 
+<a name="turnText"></a>
+
+## turnText(players)
+What the banner says for a turn: the viewer's own ("Your turn, Ann": in local multiplayer the player holding the
+device), someone else's while the viewer waits, or, with no viewer at all (robots only), who is firing. Null between
+turns (nobody firing), when the banner keeps what it said.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| players | 
+
+<a name="secondsLeft"></a>
+
+## secondsLeft()
+Seconds left until a deadline, never below 0.
+
+**Kind**: global function  
+<a name="createTurnBanner"></a>
+
+## createTurnBanner(doc)
+Build the banner (not yet in the page: the bar places it).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| doc | 
+
+<a name="createShotWatcher"></a>
+
+## createShotWatcher()
+Track the shot cells already seen. The first scan of a game only records what is there (a game shown part-way
+through, e.g. an online player arriving, must not flash every old shot at once); every later one returns what is new.
+
+**Kind**: global function  
+<a name="flashShot"></a>
+
+## flashShot(shot, reducedMotion)
+Flash a cell that was just shot: a bright ring that fades, bigger for a hit. With reduced motion, the ring only (no
+growing). Does nothing where the Web Animations API isn't there.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| shot | 
+| reducedMotion | 
+
+<a name="alive"></a>
+
+## alive()
+Whether a player is still in the game.
+
+**Kind**: global function  
+<a name="boardToShow"></a>
+
+## boardToShow(players, state)
+Which board to show (an index), or null when there is nothing to choose between. During the viewer's own turn: the
+one they chose while it can still be fired at, else the first target. Otherwise (someone else's turn, or a game
+with no human, robots only): the board the latest shot landed on, else the one they chose, else the first
+opponent still alive. The viewer's own board is never one of these (it is always shown).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| players | 
+| state | 
+
+<a name="nextBarState"></a>
+
+## nextBarState(players, state)
+The state after a refresh: the shot counts now, and which board to follow - the one a new shot landed on, unless
+it is the viewer's own turn (then they are choosing, and their own shots don't move the view) or the shot was on
+their own board (always shown anyway).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| players | 
+| state | 
+
+<a name="inPlay"></a>
+
+## inPlay(players, wasInPlay)
+Whether the game is being played, as opposed to the menu, placing ships, choosing the order, or the end. It starts
+when someone first has the turn, and lasts until the boards go, someone wins, or ships are being placed again (a
+restart): between two turns there is a moment when nobody has the turn, which must not hide the bar or forget
+what the viewer chose.
+
+**Kind**: global function  
+
+| Param | Default | Description |
+| --- | --- | --- |
+| players |  |  |
+| wasInPlay | <code>false</code> | what this returned last time |
+
+<a name="readPlayers"></a>
+
+## readPlayers(main)
+Read the players from the rendered page: .boards' .player children, with their stats' data attributes.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| main | 
+
+<a name="oneBoardCss"></a>
+
+## oneBoardCss(shown)
+The stylesheet that shows one opponent's board on a phone (narrow, or short: held sideways): every other player's board but the viewer's own
+is hidden, the boards' own stats lists give way to the bar, and another player's own controls (their sensor-scan
+box, in local multiplayer) aren't shown on their board.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| shown | 
+
+<a name="statusText"></a>
+
+## statusText()
+The words for a player's status in the bar.
+
+**Kind**: global function  
+<a name="setText"></a>
+
+## setText()
+Set a text only when it differs, so an unchanged entry isn't touched at all.
+
+**Kind**: global function  
+<a name="createEntry"></a>
+
+## createEntry(player, actions)
+One entry's elements: a button with the player's name, status and a "firing" marker (shown only on the attacker's
+entry). An opponent's shows their board; the viewer's own opens their board's drawer on a phone. Built once per
+player and then updated in place (updateEntry).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| player | 
+| actions | 
+
+<a name="setAttribute"></a>
+
+## setAttribute()
+Set an attribute only when it differs (or remove it, for null).
+
+**Kind**: global function  
+<a name="updateEntry"></a>
+
+## updateEntry(item, player, shown, ownOpen, alert)
+Bring an entry up to date, changing only what differs.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| item |  |
+| player |  |
+| shown |  |
+| ownOpen | whether the viewer's own board's drawer is open, or null where there is no drawer (wide screens) |
+| alert | a shot that just landed on this player's board, shown for a moment ("Hit" / "Miss"), or undefined |
+
+<a name="renderBar"></a>
+
+## renderBar(list, players, shown, ownOpen, actions, alerts)
+Show one entry per player: the entries are rebuilt only when the players themselves change (a new game, or whose
+own entry it is, as in local multiplayer); otherwise each is updated in place, so a turn change touches a few
+texts and attributes rather than the whole bar.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| list |  |
+| players |  |
+| shown |  |
+| ownOpen |  |
+| actions |  |
+| alerts | shots that just landed, by player id (shotWatcher.ts) |
+
+<a name="installPlayerBar"></a>
+
+## installPlayerBar(main)
+Add the player bar to the page and keep it in step with <main>. Returns a function that removes it again.
+
+On a phone it also opens and closes the drawer the viewer's own board lives in (the CSS in layouts-custom.sass
+moves the role-own board into it, and dims the page around it): body.own-board-open. It closes on Escape, on a tap
+outside it, when the game ends, and when the board it shows stops being the viewer's (local multiplayer: every
+turn, so nobody sees another player's ships by accident). A tap outside only closes it: it never reaches the board
+underneath, so closing the drawer can't fire a shot.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| main | the game's <main> (setup/gameRoot.ts) |
+
+
+* [installPlayerBar(main)](#installPlayerBar)
+    * [~showNewShots()](#installPlayerBar..showNewShots)
+    * [~tellOwnBoard()](#installPlayerBar..tellOwnBoard)
+    * [~setDrawer()](#installPlayerBar..setDrawer)
+    * [~choose()](#installPlayerBar..choose)
+    * [~toggleOwn()](#installPlayerBar..toggleOwn)
+
+<a name="installPlayerBar..showNewShots"></a>
+
+### installPlayerBar~showNewShots()
+Show the shots that just landed: flash each cell, and mark its player's entry for a moment.
+
+**Kind**: inner method of [<code>installPlayerBar</code>](#installPlayerBar)  
+<a name="installPlayerBar..tellOwnBoard"></a>
+
+### installPlayerBar~tellOwnBoard()
+Tell the game whether the viewer's own board is open: the drawer on a phone; docked on a wide screen, so open
+whenever there is one. Local multiplayer shows that player's ships only while it is (ownBoardReveal.ts).
+
+**Kind**: inner method of [<code>installPlayerBar</code>](#installPlayerBar)  
+<a name="installPlayerBar..setDrawer"></a>
+
+### installPlayerBar~setDrawer()
+Open or close the own board's drawer (a no-op when it is already that way).
+
+**Kind**: inner method of [<code>installPlayerBar</code>](#installPlayerBar)  
+<a name="installPlayerBar..choose"></a>
+
+### installPlayerBar~choose()
+The viewer picked a board: show it from now on (until the action moves on), and bring it into view.
+
+**Kind**: inner method of [<code>installPlayerBar</code>](#installPlayerBar)  
+<a name="installPlayerBar..toggleOwn"></a>
+
+### installPlayerBar~toggleOwn()
+The viewer's own entry: open/close the drawer on a phone; on a wide screen the board is always there, so go to it.
+
+**Kind**: inner method of [<code>installPlayerBar</code>](#installPlayerBar)  
+<a name="createControlPanel"></a>
+
+## createControlPanel(main)
+Build the ☰ button and its panel (not yet in the page: the bar places them).
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| main | the game's <main> |
+
+
+* [createControlPanel(main)](#createControlPanel)
+    * [~panelButton()](#createControlPanel..panelButton)
+    * [~askFirst()](#createControlPanel..askFirst)
+    * [~showGameActions()](#createControlPanel..showGameActions)
+
+<a name="createControlPanel..panelButton"></a>
+
+### createControlPanel~panelButton()
+A button in the panel.
+
+**Kind**: inner method of [<code>createControlPanel</code>](#createControlPanel)  
+<a name="createControlPanel..askFirst"></a>
+
+### createControlPanel~askFirst()
+Ask before acting, in the panel itself: the question, then the action's own word and Cancel. Cancel goes back to
+the list, with focus on the action again.
+
+**Kind**: inner method of [<code>createControlPanel</code>](#createControlPanel)  
+<a name="createControlPanel..showGameActions"></a>
+
+### createControlPanel~showGameActions()
+The "Game" section: whatever the game says applies now (none: the section isn't shown).
+
+**Kind**: inner method of [<code>createControlPanel</code>](#createControlPanel)  
 <a name="getLowStatusItems"></a>
 
 ## getLowStatusItems(items)
@@ -1570,7 +2298,14 @@ two-click mechanic, just resolved from the clicked board's own owner instead of 
 <a name="pickOrderPlayer"></a>
 
 ## pickOrderPlayer()
-A click on a player's own board while the order is being set (see beginOrderSet) - adds them to the order.
+A click on a player's board, or a tap on their name, while the order is being set (see beginOrderSet) - adds them
+to the order.
+
+**Kind**: global function  
+<a name="pickRemoteOrder"></a>
+
+## pickRemoteOrder()
+A tap on a player's name while the order is being set - the same as clicking their board.
 
 **Kind**: global function  
 <a name="handleRemoteBoardClick"></a>
@@ -1676,15 +2411,20 @@ Leave whatever room is open and show the game types again, clearing any status m
 message (the room closed on its own), show it on the Host/Join choice panel instead of the tiles.
 
 **Kind**: global function  
-<a name="enterWaitingRoom"></a>
+<a name="returnToWaitingRoom"></a>
 
-## enterWaitingRoom()
-Once a room is created or joined (or a finished game's Play Again brings everyone back to it - see
-remotePlayAgainListener.ts), watch it for changes and show the waiting room. Puts the room's own code in
-the address bar too, so the host (or anyone else) can just copy the current URL to share a join link - see
-showRemoteEntry, which reads it back out on the receiving end.
+## returnToWaitingRoom(root, state)
+Leave the game on screen and show the room's waiting room again: the host ended the game for everyone, or restarted
+it (the new game's first push then arrives here, as for any game). The same steps as Play Again after a game
+(remotePlayAgainListener.ts).
 
 **Kind**: global function  
+
+| Param |
+| --- |
+| root | 
+| state | 
+
 <a name="remoteListener"></a>
 
 ## remoteListener(e, target)
@@ -1719,6 +2459,19 @@ meant to actually run (see server/gameplay.ts's buildIsolatedRoot).
 | --- |
 | e | 
 | target | 
+
+<a name="leaveOnlineGame"></a>
+
+## leaveOnlineGame(root)
+Leave the online game this page is in and go back to the main menu (see remoteLeaveListener). Also the game menu's
+Leave game (setup/gameActions.ts), mid-game included: the server takes a player who disconnects out of the room
+(their turns then time out to random shots), and closes the room for everyone when the host does.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| root | 
 
 <a name="presetListener"></a>
 
@@ -1761,7 +2514,8 @@ for multiplayer same as the first time.
 <a name="placementListener"></a>
 
 ## placementListener(e, target)
-The placement buttons: Continue (after the handoff), Randomise, and Done. They are told apart by class name.
+The placement buttons: Continue (after the handoff), Randomise, Done, Random and Set order, and each player's name
+on the turn-order screen (orderPicks.ts, local and online alike). They are told apart by class name.
 
 **Kind**: global function  
 
@@ -1769,18 +2523,6 @@ The placement buttons: Continue (after the handoff), Randomise, and Done. They a
 | --- |
 | e | 
 | target | 
-
-<a name="setBadge"></a>
-
-## setBadge(player, text)
-The label above a player's board, which shows their place in the order.
-
-**Kind**: global function  
-
-| Param |
-| --- |
-| player | 
-| text | 
 
 <a name="nameInput"></a>
 
@@ -1952,24 +2694,13 @@ is showing, so they cannot be seen fading out.
 <a name="chooseOrder"></a>
 
 ## chooseOrder(item)
-Set the order by clicking the boards: each click adds that player to the end of the order.
+Set the order by tapping the players' names: each tap adds that player to the end of the order.
 
 **Kind**: global function  
 
 | Param |
 | --- |
 | item | 
-
-<a name="ordinal"></a>
-
-## ordinal(place)
-The word for a place in the order: 1st, 2nd, 3rd, then 4th and so on.
-
-**Kind**: global function  
-
-| Param |
-| --- |
-| place | 
 
 <a name="pickPlayer"></a>
 
@@ -1982,6 +2713,18 @@ Add a clicked board's player to the end of the order, and finish once everyone i
 | --- |
 | session | 
 | board | 
+
+<a name="pickOrder"></a>
+
+## pickOrder(item, player)
+A tap on a player's name while the order is being set: add them to it (the same as clicking their board).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| item | 
+| player | 
 
 <a name="showOrder"></a>
 
@@ -2093,6 +2836,130 @@ Place a ship from the player's chosen start and end points, if the placement is 
 | end |  | 
 | view | <code>true</code> | 
 
+<a name="revealOwnShips"></a>
+
+## revealOwnShips(players, open)
+Local multiplayer (hot-seat) only: a player's ships stay hidden in play, since others share the screen, but show on
+their own board while they have it open on their own turn. Not during placement, which shows the placing player's
+ships itself. Every human's ships are hidden first, so the last
+player's never stay shown after the device is passed on.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| players | 
+| open | 
+
+<a name="listenForOwnBoard"></a>
+
+## listenForOwnBoard(root)
+Listen for the player bar's own-board event (OWN_BOARD_EVENT) on the game's <main>, once per page. It acts only in a local
+multiplayer game: single player always shows the human's own ships, robots-only has no own board, and an online
+game (rendered from the server's pushes, root.forwardEvents set) has the server decide what each player sees.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| root | 
+
+<a name="orderPick"></a>
+
+## orderPick()
+A player's name button for the turn-order screen: while the order is chosen, every player is shown as just this
+(their board and stats are hidden, see game-pieces.sass), and tapping it adds them to the order. Hidden the rest of
+the time. One listener serves local and online play: online, the click is forwarded to the server like any other.
+
+**Kind**: global function  
+<a name="ordinal"></a>
+
+## ordinal(place)
+The word for a place in the order: 1st, 2nd, 3rd, then 4th and so on.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| place | 
+
+<a name="setOrderBadge"></a>
+
+## setOrderBadge(player, text)
+The label above a player's name (or board), which shows their place in the order; '' clears it.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| player | 
+| text | 
+
+<a name="showOrderPicks"></a>
+
+## showOrderPicks(players, shown, pickable)
+Show every player as a name button (shown), or as their board again. A button can be tapped only while
+`pickable` says so for its player: during Set order, for anyone not yet in the order.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| players | 
+| shown | 
+| pickable | 
+
+<a name="tellDeadline"></a>
+
+## tellDeadline()
+Tell the turn banner when this turn runs out (null: no limit).
+
+**Kind**: global function  
+<a name="stop"></a>
+
+## stop()
+Cancel the root's pending random shot, if any, and tell the banner there is no limit now.
+
+**Kind**: global function  
+<a name="start"></a>
+
+## start(root, player)
+Start a human's turn clock: when it runs out, a random shot is fired for them (randomAttack, as an online game's
+server does), unless the turn has ended or the game was stopped (quit, restart) in the meantime.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| root | 
+| player | 
+
+<a name="syncLocalTurnTimer"></a>
+
+## syncLocalTurnTimer(player)
+Keep the local turn clock in step with a player whose attacker flag just changed (updatePlayer.ts). A human's turn
+starts it when the timer is on; any other start (a robot) or the end of the clocked player's turn stops it. Online
+games keep their own server-side clock (session.onAttackerChanged), so nothing happens there.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| player | 
+
+<a name="setLocalTurnTimer"></a>
+
+## setLocalTurnTimer(root, on)
+Switch the local turn timer on or off (the game menu): it applies at once to the human whose turn it is (a fresh full
+turn), and stays as set for the next games on this page.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| root | 
+| on | 
+
 <a name="validPlacements"></a>
 
 ## validPlacements(matrix, shipLength)
@@ -2148,6 +3015,19 @@ its root once nothing else references the game any more - there is nothing to ex
 | --- |
 | item | 
 
+<a name="stopGame"></a>
+
+## stopGame(item)
+Stop the game running on this root, mid-game included: every step already queued for it (a robot's next shot, a
+turn change) is skipped instead of run, any placement in progress is dropped, and the attack lock is released. The
+root keeps its settings, so a new game can start on it (startNewGame calls this first).
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| item | the root, or anything in its tree |
+
 <a name="gameLayout"></a>
 
 ## gameLayout(doc)
@@ -2186,6 +3066,51 @@ The preset for a given game mode, so the lobby can be shown for it without a pre
 | Param |
 | --- |
 | mode | 
+
+<a name="isOnline"></a>
+
+## isOnline()
+Whether this page is showing an online game (rendered from the server's pushes: remoteGame.ts sets forwarding).
+
+**Kind**: global function  
+<a name="gameActionsFor"></a>
+
+## gameActionsFor(root)
+The game menu's "Game" section for what is on screen now. Local games (single player, local multiplayer, robots
+only): Restart with the same settings, and Quit to the main menu. Online, the host: Restart (a new game for everyone,
+same settings) and Return to lobby (everyone back to the waiting room), both through the server's hostGameAction;
+everyone: Leave game, which for the host ends it for everyone (the server closes a room its host leaves).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| root | 
+
+<a name="runGameAction"></a>
+
+## runGameAction(root, action, checked)
+Do what the viewer confirmed in the game menu.
+
+**Kind**: global function  
+
+| Param | Default | Description |
+| --- | --- | --- |
+| root |  |  |
+| action |  |  |
+| checked | <code>false</code> | a setting's new value (the turn timer) |
+
+<a name="listenForGameActions"></a>
+
+## listenForGameActions(root)
+Answer the game menu (view/controlPanel.ts) on the game's <main>, once per page: which actions apply, and running
+the one confirmed.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| root | 
 
 <a name="buildShip"></a>
 
@@ -2307,8 +3232,7 @@ Choose which player to attack, using the rule for the game style (elimination fo
 
 ## selectTargetCoordinate(victim)
 Choose which coordinate to attack, in layers: the density model first, then the checkerboard over every unattacked
-cell. The density scores are shown as a heat map, so the robot's thinking can be seen before the checkerboard narrows
-the choice.
+cell. Nothing is drawn while choosing: only the shot shows (only the current attacker is highlighted).
 
 **Kind**: global function  
 
@@ -2319,7 +3243,7 @@ the choice.
 <a name="shade"></a>
 
 ## shade(intensity)
-A faint yellow for the weakest cells up to a solid one for the strongest, so the spread of the robot's thinking shows.
+A faint yellow for the weakest cells up to a solid one for the strongest, so the spread of the scores shows.
 
 **Kind**: global function  
 
@@ -2330,6 +3254,8 @@ A faint yellow for the weakest cells up to a solid one for the strongest, so the
 <a name="paint"></a>
 
 ## paint(victim, point, color)
+Colour one cell's border (the sensor scan's shading, or back to normal).
+
 **Kind**: global function  
 
 | Param |
@@ -2337,54 +3263,6 @@ A faint yellow for the weakest cells up to a solid one for the strongest, so the
 | victim | 
 | point | 
 | color | 
-
-<a name="resetTargets"></a>
-
-## resetTargets(data)
-**Kind**: global function  
-
-| Param |
-| --- |
-| data | 
-
-<a name="outlineBoard"></a>
-
-## outlineBoard(player, color)
-Colour every row of a player's board, which is how a whole board is outlined.
-
-**Kind**: global function  
-
-| Param |
-| --- |
-| player | 
-| color | 
-
-<a name="displayTargets"></a>
-
-## displayTargets(cells, target, victim, opponents)
-The stages of the robot's thinking, shown in turn: the boards it is choosing between, the chosen board, the cells it
-weighs, then the cell it picks at random. The shot itself comes after the last stage (see computerAttack).
-
-**Kind**: global function  
-
-| Param |
-| --- |
-| cells | 
-| target | 
-| victim | 
-| opponents | 
-
-<a name="clearTargets"></a>
-
-## clearTargets(victim, opponents)
-Take the display away once the robot has chosen: the heat map and every board outline.
-
-**Kind**: global function  
-
-| Param |
-| --- |
-| victim | 
-| opponents | 
 
 <a name="buildShotState"></a>
 
@@ -2554,12 +3432,30 @@ something else clearing the page for a fresh game (without going through leaveRe
 one from the document while this module's own reference to it lives on.
 
 **Kind**: global function  
-<a name="setCountdownDeadline"></a>
+<a name="showCornerCountdown"></a>
 
-## setCountdownDeadline()
-Start, update, or stop the visual countdown, as each new deadline (or its absence) comes in.
+## showCornerCountdown()
+Start, update, or stop the corner countdown (now only for placing ships), as each new deadline comes in.
 
 **Kind**: global function  
+<a name="tellTurnDeadline"></a>
+
+## tellTurnDeadline()
+Tell the turn banner (view/turnBanner.ts) when the current turn runs out, or that it has no limit (null).
+
+**Kind**: global function  
+<a name="setCountdownDeadline"></a>
+
+## setCountdownDeadline(info)
+Show each new deadline (or its absence) as a push brings it: a turn's in the turn banner, beside whose turn it is;
+placing ships' in the corner countdown (the banner is only there during play).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| info | 
+
 <a name="stopCountdown"></a>
 
 ## stopCountdown()
@@ -2584,13 +3480,59 @@ be put back on the same cell after a re-render; null when focus is not on a boar
 | --- |
 | root | 
 
-<a name="renderInto"></a>
+<a name="inflateBody"></a>
 
-## renderInto(root, redactedBody)
+## inflateBody(redactedBody, focus)
+Inflate a redacted body, with the boards' keyboard navigation (navigableGrid) put back: it is function listeners,
+which json drops. The Tab stop stays on the cell that had focus. Its listeners run locally even while events are
+forwarded (treeloom only forwards named listeners), and Enter / Space click the cell, which is forwarded like a
+mouse click.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| redactedBody | 
+| focus | 
+
+<a name="renderFresh"></a>
+
+## renderFresh(root, redactedBody)
 Replace the root's own body content with a freshly-inflated redacted body's children, rendered directly as the
 body's own children - not nested one level deeper under some other wrapper - so a path captured from this tree
 (getItemPath) and one resolved against the server's own root (getItemByPath) agree: both are root -> body ->
 [boards, placement panel], the exact shape redactGameBody sends.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| root | 
+| redactedBody | 
+
+<a name="renderChanges"></a>
+
+## renderChanges(root, redactedBody)
+Update what is rendered to match a push, changing only what differs (treeloom's reconcile): elements, focus and
+keyboard navigation stay where they are. The push's top level is a <body> while the game renders into the root's
+own body (a <main> in a browser, see gameRoot), so only the push's children are reconciled into root.body: the
+inflated top item takes everything else from root.body (its node name, attributes, data; the structure fields
+reconcile keeps from existing anyway), so root.body itself is unchanged.
+Should reconcile ever throw (it refuses a top-level node mismatch, which this rules out), the push is rendered in
+full instead, so the page never stays on a stale state.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| root | 
+| redactedBody | 
+
+<a name="renderInto"></a>
+
+## renderInto(root, redactedBody)
+Show a push: reconciled into what is already rendered when it can be (same game, forwarding unchanged), otherwise
+rendered in full (the first push, and the switches between a game and its final scores).
 
 **Kind**: global function  
 
@@ -2615,7 +3557,7 @@ Start rendering and interacting with a remote game, reusing the app's own existi
 one (a second documentDomItem() would claim the same real document.head/body the app's own root already has -
 exactly the collision the server's own per-room roots had to avoid, see server/gameplay.ts). Every click/change
 on the rendered tree is forwarded to the server instead of run locally (setForwardEvents) - the server's own
-receiveForwardedEvent resolves and dispatches it, and the resulting gameUpdate re-renders this same tree fresh.
+receiveForwardedEvent resolves and dispatches it, and the resulting gameUpdate is reconciled into this same tree.
 Leaving the lobby's own listeners (presetListener, remoteListener, ...) alone is safe because the lobby's own
 markup is no longer in the tree by the time this runs - clearChildren above already removed it.
 
@@ -2636,6 +3578,19 @@ again for whatever the next gameUpdate turns out to be once Play Again succeeds 
 Stop forwarding and clear whatever the remote game last rendered, so the root can go back to running locally.
 
 **Kind**: global function  
+<a name="removeHeatShading"></a>
+
+## removeHeatShading(board)
+Take the sensor scan's shading (attack/heatHint.ts: each cell's border colour) off a board clone, for every viewer
+but the attacker who switched it on. The scan only uses what everyone can see, so this hides nothing secret: it
+keeps one player's hint, and its noise, off everyone else's screen.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| board | a clone, changed in place |
+
 <a name="redactBoard"></a>
 
 ## redactBoard(board, ownBoard)
@@ -2716,7 +3671,7 @@ their business in the first place. Name and ship list are never secret, so nothi
 
 ## redactPlayer(player, viewer)
 One player, redacted for a given viewer: a clone of the real player, with its board and fleet redacted per
-redactBoard/redactShip, its own placement panel disabled, and its own hint checkbox removed entirely, all
+redactBoard/redactShip (and the sensor scan's shading removed unless the viewer is the attacker who has it on), its own placement panel disabled, and its own hint checkbox removed entirely, all
 unless this is that player's own viewer. Everything else (name, colour, robot/human, overall status, whose
 turn it is) passes through unchanged. children is kept in step with whichever of its own entries changed, by
 index, rather than assumed to always be exactly [turn-badge, board, stats] - a remote game's own fourth
@@ -2819,6 +3774,33 @@ CSS can style a `summary` player plainer.
 | players | 
 | viewer | 
 
+<a name="configuredLobbyUrl"></a>
+
+## configuredLobbyUrl(doc)
+The lobby URL a page names in its cloakfall-lobby meta tag, or null when it names none (no tag, no document).
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| doc | The page's document: the global one by default, null when there is none. |
+
+<a name="lobbyUrl"></a>
+
+## lobbyUrl(location, configured)
+The lobby server's URL. A page that names its lobby with a cloakfall-lobby meta tag (the website's copy of the game,
+against the hosted lobby) uses that tag's origin, when it is an http: or https: URL; anything else in the tag is ignored. Without
+one, it is port 3002 on the host the page was loaded from, so a phone that opened the game from the laptop's LAN
+address (http://192.168.x.y:8080) reaches the laptop's lobby (npm run serve:lobby), not itself. Outside a page (Node,
+tests), or for a page opened from a file, it is localhost.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| location | The page's location: the global one by default, null when there is none. |
+| configured | The lobby URL the page names: its meta tag's by default, null for none. |
+
 <a name="connectLobbySocket"></a>
 
 ## connectLobbySocket(url)
@@ -2830,6 +3812,33 @@ UI action, by calling this directly with that server's URL - the UI's own calls 
 | Param |
 | --- |
 | url | 
+
+<a name="setLobbyTimeout"></a>
+
+## setLobbyTimeout(ms)
+How long a lobby call waits for the server's answer before giving up with UNREACHABLE_ERROR (default 8 seconds).
+Tests shorten it.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| ms | 
+
+<a name="request"></a>
+
+## request(event, payload)
+Send a lobby call and resolve with the server's answer, or with `{ error: UNREACHABLE_ERROR }` if none arrives in
+time. Without the timeout, socket.io buffers the call while it keeps trying to connect, so an unreachable lobby left
+the screen on "Looking up room..." forever. A call that timed out is dropped from socket.io's buffer, so it is not
+sent later if the connection comes back.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| event | 
+| payload | 
 
 <a name="disconnectLobbySocket"></a>
 
@@ -2892,6 +3901,27 @@ Be told whenever the game's state changes - the redacted view of the whole scree
 Replaces any previous listener rather than adding another - a rematch (see remotePlayAgainListener.ts,
 server/lobbyServer.ts's relaxed startGame guard) re-enters a second real game on the same connection, which
 would otherwise leave the first game's own render loop listening alongside the new one, forever.
+
+**Kind**: global function  
+<a name="offGameUpdate"></a>
+
+## offGameUpdate()
+Stop listening for game updates (leaving a game), without connecting a socket that isn't there. A stopped game's
+late push must never be drawn over whatever comes next (the waiting room, the menu).
+
+**Kind**: global function  
+<a name="hostGameAction"></a>
+
+## hostGameAction()
+The host's game menu, mid-game: end the game for everyone and go back to the waiting room ('lobby'), or start
+a new one with the same settings ('restart'). See server/lobbyServer.ts's hostGameAction.
+
+**Kind**: global function  
+<a name="onBackToLobby"></a>
+
+## onBackToLobby()
+Be told when the host has ended the game and everyone goes back to the waiting room (with the room's state).
+Replaces any previous listener.
 
 **Kind**: global function  
 <a name="sendGameAction"></a>
@@ -3276,10 +4306,23 @@ Remove the markers when the turn passes.
 | --- |
 | victim | 
 
+<a name="hitPause"></a>
+
+## hitPause(attacker)
+The pause before the turn passes after this attacker's shot: HIT_PAUSE_MS in local multiplayer, none otherwise.
+Online rooms run the same game code on the server (their session has onAttackerChanged), so they are told apart.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| attacker | 
+
 <a name="updateScore"></a>
 
 ## updateScore(hitShip, sunkShip, players)
-Update all game stats after each player round
+Update all game stats after each player round: pass the turn (after a short pause in local multiplayer, with the
+attack lock on so nothing else can be fired meanwhile), or end the game.
 
 **Kind**: global function  
 
@@ -3315,8 +4358,8 @@ Track player stats such as attacks and turns
 <a name="shipsListener"></a>
 
 ## shipsListener(e, target)
-The ship toggles. A player's own checkbox (one-player game) shows or hides their ships. The all-ships control
-(robots-only game) does the same for every board at once.
+The robots-only game's "Show all ships" control: shows or hides the ships on every board at once. (Single player's
+own "Show my ships" checkbox is gone: the human's own ships always show.)
 
 **Kind**: global function  
 
