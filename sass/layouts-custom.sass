@@ -267,7 +267,8 @@ body.has-player-bar
 .player-bar .is-own .player-bar-name::after
   content: ' \25B8'
 
-@media (max-width: 759px)
+// Phones: narrow, or short (held sideways). The same numbers as src/view/playerBar.ts's PHONE_MEDIA
+@media (max-width: 759px), (max-height: 500px)
   body.has-player-bar main.game > .boards > .player.role-own
     position: fixed
     top: 0
@@ -308,7 +309,7 @@ body.has-player-bar
 
 // Wide screens: the viewer's own board docked in a column of its own on the left, apart from the opponents' boards
 // (user, 2026-11-17), which wrap in the space to its right. Fixed, so it stays in view however far the boards scroll.
-@media (min-width: 760px)
+@media (min-width: 760px) and (min-height: 501px)
   body.has-own-board main.game > .boards
     padding-left: 30rem
 
@@ -500,7 +501,7 @@ body.has-player-bar main.game .player-controls, body.has-player-bar main.game > 
 body.has-turn-banner main.game > .boards
   padding-top: 6.5rem
 
-@media (min-width: 760px)
+@media (min-width: 760px) and (min-height: 501px)
   body.has-turn-banner.has-own-board main.game > .boards > .player.role-own
     top: 6.5rem
     max-height: calc(100vh - 15.5rem)
@@ -536,3 +537,49 @@ body.has-turn-banner main.game > .boards
 @media (prefers-reduced-motion: reduce)
   .player-bar .player-bar-entry.was-hit
     animation: none
+
+// A phone held sideways (short, but wide): the board is sized to the height between the bar and the top, and the turn
+// banner sits in the top-left corner beside the board rather than over it. dvh follows Safari's toolbar as it shows
+// and hides; vh is the fallback.
+@media (max-height: 500px) and (min-width: 600px)
+  .matrix .layer .row .column
+    height: clamp(1.6rem, calc((100vh - 19rem) / 10), 3.5rem)
+    height: clamp(1.6rem, calc((100dvh - 19rem) / 10), 3.5rem)
+    width: clamp(1.6rem, calc((100vh - 19rem) / 10), 3.5rem)
+    width: clamp(1.6rem, calc((100dvh - 19rem) / 10), 3.5rem)
+
+  .turn-banner
+    left: .8rem
+    transform: none
+    max-width: calc(50vw - 18rem)
+    white-space: normal
+
+  body.has-turn-banner main.game > .boards
+    padding-top: 1rem
+
+  // The own board's drawer: the same height-sized cells (its own 2.6rem would run under the bar), and the banner
+  // steps aside while it is open, since both want the top-left corner
+  body.has-player-bar main.game > .boards > .player.role-own
+    padding-top: 1rem
+
+    .matrix .layer .row .column
+      height: clamp(1.6rem, calc((100vh - 19rem) / 10), 3.5rem)
+      height: clamp(1.6rem, calc((100dvh - 19rem) / 10), 3.5rem)
+      width: clamp(1.6rem, calc((100vh - 19rem) / 10), 3.5rem)
+      width: clamp(1.6rem, calc((100dvh - 19rem) / 10), 3.5rem)
+
+  body.own-board-open .turn-banner
+    visibility: hidden
+
+@keyframes turn-banner-in-side
+  from
+    transform: translateY(-150%)
+    opacity: 0
+
+  to
+    transform: none
+    opacity: 1
+
+@media (max-height: 500px) and (min-width: 600px) and (prefers-reduced-motion: no-preference)
+  .turn-banner.is-new
+    animation-name: turn-banner-in-side

@@ -10,12 +10,20 @@
  * changes, and shows the chosen board with a stylesheet of its own. Local and online games work the same way.
  */
 
-/** Wider than this, every board is shown (side by side); narrower, one opponent at a time. */
 import createControlPanel from './controlPanel'
 import createTurnBanner from './turnBanner'
 import createShotWatcher, { flashShot } from './shotWatcher'
 
+/** Wider than this, every board is shown (side by side); narrower, one opponent at a time. */
 export const ONE_BOARD_MAX_WIDTH_PX = 759
+
+/** Shorter than this is a phone too, however wide: a phone held sideways (an iPhone Air is 912 x 420) has no room
+ * for every board, so it gets the phone layout as well. */
+export const ONE_BOARD_MAX_HEIGHT_PX = 500
+
+/** The media query for the phone layout: one opponent's board at a time, and the viewer's own in a drawer. The
+ * stylesheets use the same numbers (layouts-custom.sass). */
+export const PHONE_MEDIA = `(max-width: ${ONE_BOARD_MAX_WIDTH_PX}px), (max-height: ${ONE_BOARD_MAX_HEIGHT_PX}px)`
 
 /** How long a player's entry says "Hit" / "Miss" after a shot lands on their board. */
 export const SHOT_ALERT_MS = 2500
@@ -155,14 +163,14 @@ export const readPlayers = (main: Element): BarPlayer[] => {
 }
 
 /**
- * The stylesheet that shows one opponent's board on a narrow screen: every other player's board but the viewer's own
+ * The stylesheet that shows one opponent's board on a phone (narrow, or short: held sideways): every other player's board but the viewer's own
  * is hidden, the boards' own stats lists give way to the bar, and another player's own controls (their sensor-scan
  * box, in local multiplayer) aren't shown on their board.
  * @param shown
  */
 export const oneBoardCss = (shown: number | null): string => shown === null
   ? ''
-  : `@media (max-width: ${ONE_BOARD_MAX_WIDTH_PX}px) {
+  : `@media ${PHONE_MEDIA} {
   main.game > .boards > .player:not(.role-own):not(:nth-child(${shown + 1})) { display: none !important; }
   main.game > .boards > .player:not(.role-own) > .player-stats > ul,
   main.game > .boards > .player:not(.role-own) > .player-stats > .player-controls { display: none; }
@@ -300,7 +308,7 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
   main.after(nav, style)
   const view = doc.defaultView
   // No matchMedia (some test DOMs): treated as a wide screen, so no drawer
-  const narrow = view?.matchMedia?.(`(max-width: ${ONE_BOARD_MAX_WIDTH_PX}px)`) ?? null
+  const narrow = view?.matchMedia?.(PHONE_MEDIA) ?? null
 
   let state = initialBarState()
   let frame: number | null = null
