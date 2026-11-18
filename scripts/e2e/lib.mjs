@@ -37,7 +37,8 @@ export const openGame = async (browser, url) => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
   const problems = watchPage(page)
   await page.goto(`${url}/`)
-  await page.waitForSelector('button')
+  // Any visible button: the first in the page can be a hidden one (each player's turn-order name button)
+  await page.locator('button:visible').first().waitFor()
   return { page, problems }
 }
 

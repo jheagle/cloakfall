@@ -160,6 +160,36 @@ describe('remote placement: host-driven ordering', () => {
   })
 })
 
+describe('remote placement: the turn-order screen shows names, not boards (CLOA-18)', () => {
+  const pick = player => treeloom.getChildrenByClass('order-pick', player)[0]
+
+  test('every player is shown by name once ordering begins, and as their board again once the order is set', () => {
+    const { players, root } = setUp(2)
+    expect(players[0].attributes['data-ordering']).not.toBe('true')
+    players.forEach(player => { placeFullFleet(player); readyRemotePlayer(player) })
+    expect(players.map(player => player.attributes['data-ordering'])).toEqual(['true', 'true'])
+    expect(pick(players[0]).attributes.textContent).toBe(players[0].name)
+    expect(pick(players[0]).attributes.disabled).toBe(true)
+    beginOrderSet(root)
+    expect(pick(players[0]).attributes.disabled).toBe(false)
+    pick(players[1]).element.click()
+    expect(pick(players[1]).attributes.disabled).toBe(true)
+    pick(players[0]).element.click()
+    expect(players.map(player => player.attributes['data-ordering'])).toEqual(['false', 'false'])
+  })
+
+  test('Set order by tapping names locks in that order', () => {
+    const order = []
+    const { players, root } = setUp(2, chosen => order.push(chosen))
+    players.forEach(player => { placeFullFleet(player); readyRemotePlayer(player) })
+    beginOrderSet(root)
+    pick(players[1]).element.click()
+    pick(players[0]).element.click()
+    expect(order).toHaveLength(1)
+    expect(order[0].map(player => player.name)).toEqual([players[1].name, players[0].name])
+  })
+})
+
 describe('remote placement: player stats stay hidden until a round actually starts', () => {
   // The real bug this covers: unlike local hot-seat's own placement.ts, remote placement never hid player-stats
   // (name, ship list, and - with hints 'optional' - the "Show sensor scan on my turn" checkbox) during placement,

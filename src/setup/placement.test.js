@@ -148,6 +148,68 @@ describe('the placement phase', () => {
     expect(document.querySelectorAll('.player').length).toBe(2)
   })
 
+  describe('the turn-order screen shows names, not boards (CLOA-18)', () => {
+    const placeBoth = async () => {
+      const players = await setUp()
+      for (let i = 0; i < 2; i++) {
+        button('placement-continue').click()
+        button('placement-randomise').click()
+        button('placement-done').click()
+      }
+      return players
+    }
+    const pick = player => player.element.querySelector('.order-pick')
+
+    test('choosing: each player is shown by name, and the names can\'t be tapped until Set order', async () => {
+      const [first, second] = await placeBoth()
+      expect(first.element.getAttribute('data-ordering')).toBe('true')
+      expect(second.element.getAttribute('data-ordering')).toBe('true')
+      expect(pick(first).textContent).toBe('Player 1')
+      expect(pick(second).textContent).toBe('Player 2')
+      expect(pick(first).disabled).toBe(true)
+      expect(message()).toContain('tapping each player\'s name')
+    })
+
+    test('Set order by tapping names: each one tapped can\'t be tapped again, and the first tapped goes first', async () => {
+      const [first, second] = await placeBoth()
+      button('begin-order').click()
+      expect(pick(first).disabled).toBe(false)
+      pick(second).click()
+      expect(second.element.textContent).toContain('1st')
+      expect(pick(second).disabled).toBe(true)
+      expect(pick(first).disabled).toBe(false)
+      pick(first).click()
+      expect(message()).toContain('Player 2, then Player 1')
+      button('placement-continue').click()
+      expect(second.attacker).toBe(true)
+      expect(first.element.getAttribute('data-ordering')).toBe('false')
+      expect(second.element.getAttribute('data-ordering')).toBe('false')
+    })
+
+    test('a typed name is the one shown on the turn-order screen', async () => {
+      const [first] = await setUp()
+      document.querySelector('.placement-name').value = 'Ada'
+      for (let i = 0; i < 2; i++) {
+        button('placement-continue').click()
+        button('placement-randomise').click()
+        button('placement-done').click()
+      }
+      expect(pick(first).textContent).toBe('Ada')
+    })
+
+    test('a name is shown as text, never as markup', async () => {
+      const [first] = await setUp()
+      document.querySelector('.placement-name').value = '<b>Bo</b>'
+      for (let i = 0; i < 2; i++) {
+        button('placement-continue').click()
+        button('placement-randomise').click()
+        button('placement-done').click()
+      }
+      expect(pick(first).textContent).toBe('<b>Bo</b>')
+      expect(pick(first).querySelector('b')).toBeNull()
+    })
+  })
+
   test('once a player is done, their ships are no longer shown', async () => {
     const [first] = await setUp()
     button('placement-continue').click()

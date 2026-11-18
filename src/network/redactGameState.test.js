@@ -130,8 +130,8 @@ describe('redacting the game state for a remote viewer', () => {
   test('a redacted player is still a real, renderable tree: the board is one of its children', async () => {
     const [viewer] = await setUp()
     const redacted = redactPlayer(viewer, viewer)
-    expect(redacted.children).toHaveLength(3)
-    expect(redacted.children[1]).toBe(redacted.board)
+    expect(redacted.children).toHaveLength(4)
+    expect(redacted.children[2]).toBe(redacted.board)
   })
 
   test('redactGameState redacts every player for the given viewer: only the viewer\'s own board keeps its ships', async () => {
