@@ -4,6 +4,7 @@ import defaultFleet from './defaultFleet'
 import playerColour from './playerColours'
 import playerSet from '../components/pieces/playerSet'
 import playerStats from '../components/pieces/playerStats'
+import { orderPick } from './orderPicks'
 import waterTile from '../components/pieces/waterTile'
 import { labelBoard, labelBoardTiles } from '../cells/labelTile'
 import type { DomItem } from 'treeloom/dist/domItem/types'
@@ -54,7 +55,8 @@ const buildPlayers = (humans: number, root: DomItem, robots: number = 0, players
   // was never completed in the first place falls back to using the fresh, incomplete items "as is" instead.
   // It is not attached to root yet either, so root is passed in for it to read the game's settings from instead.
   player.playerStats = treeloom.createDomItem(playerStats(player, `${Math.round(player.status * 100) / 100}%`, root)) as unknown as DomItem
-  player.children = [{ nodeName: 'div', attributes: { className: 'turn-badge' } } as unknown as DomItem, player.board, player.playerStats]
+  // The name button stands in for the board while the turn order is chosen (orderPicks.ts)
+  player.children = [{ nodeName: 'div', attributes: { className: 'turn-badge' } } as unknown as DomItem, orderPick() as unknown as DomItem, player.board, player.playerStats]
   players.push(player)
   return buildPlayers(--humans, root, humans < 0 ? --robots : robots, players)
 }

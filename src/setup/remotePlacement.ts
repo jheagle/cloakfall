@@ -9,6 +9,7 @@ import { isValidPlacement, placeShip } from './placeShip'
 import { setStatsShown } from './placement'
 import remotePlacementPanel from '../components/layout/remotePlacementPanel'
 import remoteOrderingPanel from '../components/layout/remoteOrderingPanel'
+import { ordinal, setOrderBadge, showOrderPicks } from './orderPicks'
 import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { Point } from 'treeloom-matrix/dist/point/types'
 import type { Board, Player, ShipSpec, Tile } from '../types'
@@ -131,8 +132,8 @@ const updateOrderingPanel = (session: RemotePlacementState, root: DomItemRoot): 
   const panel = child(root.body, 'remote-ordering')
   const messages: Record<RemoteStage, string> = {
     placing: '',
-    choosing: 'Choose how to decide the order: Random, or click each player\'s board in turn.',
-    ordering: 'Click each player\'s board in turn. The first one clicked goes first.',
+    choosing: 'Choose how to decide the order: Random, or tap each player\'s name in turn.',
+    ordering: 'Tap each player\'s name in turn. The first one tapped goes first.',
     shuffling: 'Choosing at random...',
     chosen: `${session.order.map(p => p.name).join(', then ')} will take turns, in that order.`
   }
@@ -243,7 +244,8 @@ const checkAllReady = (session: RemotePlacementState, root: DomItemRoot): void =
   }
 }
 
-/** A click on a player's own board while the order is being set (see beginOrderSet) - adds them to the order. */
+/** A click on a player's board, or a tap on their name, while the order is being set (see beginOrderSet) - adds them
+ * to the order. */
 const pickOrderPlayer = (board: Board): void => {
   const session = activeSession(board)
   if (session.stage !== 'ordering') {
@@ -254,6 +256,8 @@ const pickOrderPlayer = (board: Board): void => {
     return
   }
   session.order.push(player)
+  setOrderBadge(player, ordinal(session.order.length))
+  showOrderPicks(session.players, true, p => !session.order.includes(p))
   const root = treeloom.getTopParentItem(board) as DomItemRoot
   if (session.order.length < session.players.length) {
     updateOrderingPanel(session, root)
@@ -261,6 +265,9 @@ const pickOrderPlayer = (board: Board): void => {
   }
   finishOrdering(session, root)
 }
+
+/** A tap on a player's name while the order is being set - the same as clicking their board. */
+export const pickRemoteOrder = (player: Player): void => pickOrderPlayer(player.board)
 
 /** A board click while a remote placement/ordering phase is running - routed by the current stage. */
 export const handleRemoteBoardClick = (tile: Tile, board: Board): void => {
@@ -276,6 +283,8 @@ export const handleRemoteBoardClick = (tile: Tile, board: Board): void => {
 const beginOrdering = (session: RemotePlacementState, root: DomItemRoot): void => {
   session.stage = 'choosing'
   session.players.filter(player => !player.isRobot).forEach(player => update(panelOf(player), { style: { display: 'none' } }))
+  // From here until the round starts, each player is shown by name only (orderPicks.ts), not by their board
+  showOrderPicks(session.players, true)
   updateOrderingPanel(session, root)
 }
 
@@ -346,6 +355,7 @@ export const beginOrderSet = (item: DomItem): void => {
   session.order = []
   const root = treeloom.getTopParentItem(item) as DomItemRoot
   session.players.forEach(player => update(player as unknown as DomItem, { 'data-pickable': 'true' }))
+  showOrderPicks(session.players, true, () => true)
   updateOrderingPanel(session, root)
 }
 
@@ -389,6 +399,8 @@ export const chooseOrderRandom = (item: DomItem): void => {
 const finishOrdering = (session: RemotePlacementState, root: DomItemRoot): void => {
   session.stage = 'chosen'
   session.players.forEach(player => update(player as unknown as DomItem, { 'data-pickable': 'false' }))
+  showOrderPicks(session.players, false)
+  session.players.forEach(player => setOrderBadge(player, ''))
   updateOrderingPanel(session, root)
   update(child(root.body, 'remote-ordering'), { style: { display: 'none' } })
   setStatsShown(session.players, true)

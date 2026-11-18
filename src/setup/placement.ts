@@ -10,6 +10,7 @@ import queueTimeout from '../queue'
 import updatePlayerStats from '../attack/updatePlayerStats'
 import { isValidPlacement, placeShip } from './placeShip'
 import checkIfShipCell from '../utils/checkIfShipCell'
+import { ordinal, setOrderBadge, showOrderPicks } from './orderPicks'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { Point } from 'treeloom-matrix/dist/point/types'
 import type { Board, Player, ShipSpec, Tile } from '../types'
@@ -19,8 +20,9 @@ import type { Board, Player, ShipSpec, Tile } from '../types'
  * - handoff: the next human is asked to take over
  * - placing: that human places their ships
  * - ready: every human has placed, and the round starts when they press Continue (one human, or robots only)
- * - choosing: several players, who will choose who goes first (Random, or Set order)
- * - ordering: the order is being set by clicking each player's board in turn
+ * - choosing: several players, who will choose who goes first (Random, or Set order); from here until the round
+ *   starts, each player is shown by name only (orderPicks.ts), not by their board
+ * - ordering: the order is being set by tapping each player's name in turn
  * - shuffling: Random is picking the order, with a short animation
  * - chosen: the order is set, and the round starts when they press Continue
  */
@@ -57,13 +59,6 @@ const update = (item: DomItem, attributes: object): void => {
   // labelTile only acts on tiles: a tile's accessible name follows its colour
   treeloom.updateElement(labelTile(siFunciona.mergeObjectsMutable(item, { attributes }) as DomItem))
 }
-
-/**
- * The label above a player's board, which shows their place in the order.
- * @param player
- * @param text
- */
-const setBadge = (player: Player, text: string): void => update(child(player as unknown as DomItem, 'turn-badge'), { innerHTML: text })
 
 /** The name field on the placement panel. */
 const nameInput = (session: PlacementSession): HTMLInputElement => child(session.panel, 'placement-name').element as HTMLInputElement
@@ -338,7 +333,8 @@ const showReady = (session: PlacementSession): void => {
     session.stage = 'choosing'
     showAll(session)
     setStatsShown(session.players, true)
-    setMessage(session, 'All players are ready. Choose who goes first: Random, or set the order by clicking each player\'s board in turn.')
+    showOrderPicks(session.players, true)
+    setMessage(session, 'All players are ready. Choose who goes first: Random, or set the order by tapping each player\'s name in turn.')
     setButtons(session, { randomShown: true, orderShown: true })
     return
   }
@@ -349,7 +345,7 @@ const showReady = (session: PlacementSession): void => {
 }
 
 /**
- * Set the order by clicking the boards: each click adds that player to the end of the order.
+ * Set the order by tapping the players' names: each tap adds that player to the end of the order.
  * @param item
  */
 export const chooseOrder = (item: DomItem): void => {
@@ -358,20 +354,12 @@ export const chooseOrder = (item: DomItem): void => {
   session.order = []
   showAll(session)
   session.players.forEach(p => {
-    setBadge(p, '')
+    setOrderBadge(p, '')
     update(p as unknown as DomItem, { 'data-pickable': 'true' })
   })
-  setMessage(session, 'Click each player\'s board in turn. The first one you click goes first.')
+  showOrderPicks(session.players, true, () => true)
+  setMessage(session, 'Tap each player\'s name in turn. The first one you tap goes first.')
   setButtons(session, { orderShown: true })
-}
-
-/**
- * The word for a place in the order: 1st, 2nd, 3rd, then 4th and so on.
- * @param place
- */
-const ordinal = (place: number): string => {
-  const suffix = place % 10 === 1 && place % 100 !== 11 ? 'st' : place % 10 === 2 && place % 100 !== 12 ? 'nd' : place % 10 === 3 && place % 100 !== 13 ? 'rd' : 'th'
-  return `${place}${suffix}`
 }
 
 /**
@@ -385,12 +373,25 @@ const pickPlayer = (session: PlacementSession, board: Board): void => {
     return
   }
   session.order.push(player)
-  setBadge(player, ordinal(session.order.length))
+  setOrderBadge(player, ordinal(session.order.length))
+  showOrderPicks(session.players, true, p => !session.order.includes(p))
   if (session.order.length < session.players.length) {
-    setMessage(session, `${session.order.map(p => p.name).join(', ')} so far. Click the next player in turn.`)
+    setMessage(session, `${session.order.map(p => p.name).join(', ')} so far. Tap the next player in turn.`)
     return
   }
   showOrder(session)
+}
+
+/**
+ * A tap on a player's name while the order is being set: add them to it (the same as clicking their board).
+ * @param item
+ * @param player
+ */
+export const pickOrder = (item: DomItem, player: Player): void => {
+  const session = active(item)
+  if (session.stage === 'ordering') {
+    pickPlayer(session, player.board)
+  }
 }
 
 /**
@@ -401,6 +402,7 @@ const showOrder = (session: PlacementSession): void => {
   session.stage = 'chosen'
   showAll(session)
   session.players.forEach(p => update(p as unknown as DomItem, { 'data-pickable': 'false' }))
+  showOrderPicks(session.players, true)
   setMessage(session, `${session.order.map(p => p.name).join(', then ')} will take turns, in that order. Press Continue to start.`)
   setButtons(session, { continueShown: true, orderShown: true })
 }
@@ -413,6 +415,7 @@ export const randomOrder = (item: DomItem): void => {
   const session = active(item)
   session.stage = 'shuffling'
   session.players.forEach(p => update(p as unknown as DomItem, { 'data-pickable': 'false' }))
+  showOrderPicks(session.players, true)
   setButtons(session, {})
   setMessage(session, 'Choosing at random...')
   const shuffled = shuffle(session.players)
@@ -423,7 +426,7 @@ export const randomOrder = (item: DomItem): void => {
   queueTimeout(item, () => {
     session.players.forEach(p => update(p as unknown as DomItem, { style: { outline: 'none' } }))
     session.order = shuffled
-    session.order.forEach((p, i) => setBadge(p, ordinal(i + 1)))
+    session.order.forEach((p, i) => setOrderBadge(p, ordinal(i + 1)))
     showOrder(session)
   }, 120)
 }
@@ -472,8 +475,9 @@ const startRound = (session: PlacementSession, order: Player[]): void => {
   if (order.length > 1 && order !== players) {
     reorderBoards(order)
   }
+  showOrderPicks(players, false)
   players.forEach(p => {
-    setBadge(p, '')
+    setOrderBadge(p, '')
     update(p as unknown as DomItem, { style: { display: '', outline: 'none' } })
   })
   setStatsShown(players, true)

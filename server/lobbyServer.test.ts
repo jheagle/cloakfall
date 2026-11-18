@@ -508,7 +508,16 @@ describe('the lobby server', () => {
       host.emit('gameAction', { itemId: idAtPath(choosingView, [orderingIndex, setOrderIndex]), eventType: 'click', listenerFunc: 'remotePlacementListener', data: [] })
       const orderingView = await hostChose
       const orderingMessage = orderingView.children[orderingIndex].children.find((child: any) => child.attributes?.className === 'remote-ordering-message')
-      expect(orderingMessage.attributes.innerHTML).toMatch(/click each player/i)
+      expect(orderingMessage.attributes.innerHTML).toMatch(/tap each player/i)
+
+      // The host taps a player's name (CLOA-18): forwarded like any click, it adds that player to the order
+      const pickIndex = orderingView.children[boardsIndex].children[1].children.findIndex((child: any) => child.attributes?.className === 'order-pick')
+      const picked = new Promise<any>(resolve => host.once('gameUpdate', resolve))
+      host.emit('gameAction', { itemId: idAtPath(orderingView, [boardsIndex, 1, pickIndex]), eventType: 'click', listenerFunc: 'placementListener', data: [] })
+      const pickedView = await picked
+      expect(pickedView.children[boardsIndex].children[1].children[pickIndex].attributes.disabled).toBe(true)
+      expect(pickedView.children[boardsIndex].children[0].children[pickIndex].attributes.disabled).toBe(false)
+      expect(pickedView.children[boardsIndex].children[1].children[0].attributes.innerHTML).toBe('1st')
     })
 
     /**
