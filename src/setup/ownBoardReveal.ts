@@ -1,12 +1,14 @@
 import shadeShips from '../cells/shadeShips'
 import { getGameMode } from './gameOptions'
+import { getSession } from './gameSession'
 import { OWN_BOARD_EVENT } from '../view/playerBar'
 import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { Player } from '../types'
 
 /**
  * Local multiplayer (hot-seat) only: a player's ships stay hidden in play, since others share the screen, but show on
- * their own board while they have it open on their own turn. Every human's ships are hidden first, so the last
+ * their own board while they have it open on their own turn. Not during placement, which shows the placing player's
+ * ships itself. Every human's ships are hidden first, so the last
  * player's never stay shown after the device is passed on.
  * @param players
  * @param open
@@ -39,6 +41,11 @@ export const listenForOwnBoard = (root: DomItemRoot): void => {
   listening.add(main)
   main.addEventListener(OWN_BOARD_EVENT, event => {
     if ((root as DomItemRoot & { forwardEvents?: unknown }).forwardEvents || getGameMode(root as unknown as DomItem) !== 'multi') {
+      return
+    }
+    // While ships are being placed the bar is not in play and says the own board is closed (on every change to the
+    // page), which would hide the ships the player is placing as fast as they appear: placement shades its own
+    if (getSession(root as unknown as DomItem).placement) {
       return
     }
     const boards = root.body.children.find(child => String(child.attributes?.className ?? '') === 'boards')

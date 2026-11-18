@@ -211,11 +211,13 @@ describe('the placement phase', () => {
     expect(human.element.style.display).toBe('')
   })
 
-  test('a name typed on the placement screen is kept, and shown in the stats', async () => {
+  test('hot-seat: a name typed on the handoff screen is kept, and shown in the stats; placing has no name field', async () => {
     const [first] = await setUp()
     expect(document.querySelector('.placement-name').value).toBe('Player 1')
-    button('placement-continue').click()
+    expect(shown('placement-name')).toBe(true)
     document.querySelector('.placement-name').value = 'Ada'
+    button('placement-continue').click()
+    expect(shown('placement-name')).toBe(false)
     button('placement-randomise').click()
     button('placement-done').click()
     expect(first.name).toBe('Ada')
@@ -224,8 +226,8 @@ describe('the placement phase', () => {
 
   test('an empty name keeps the default', async () => {
     const [first] = await setUp()
-    button('placement-continue').click()
     document.querySelector('.placement-name').value = '   '
+    button('placement-continue').click()
     button('placement-randomise').click()
     button('placement-done').click()
     expect(first.name).toBe('Player 1')

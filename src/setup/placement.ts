@@ -189,7 +189,9 @@ const showPlacing = (session: PlacementSession): void => {
   showOnly(session, current(session))
   const next = session.pending[0]
   setMessage(session, next ? `Place your ${next.name} (${next.size} cells): click where it starts, then where it ends.` : 'All placed. Press Done to continue.')
-  setButtons(session, { placingShown: true, doneEnabled: !session.pending.length, nameShown: true })
+  // Hot-seat asks for the name on the handoff screen, before placing: a text field beside the board made phones zoom
+  // in on it mid-placement. A single player has no handoff, so they keep it here.
+  setButtons(session, { placingShown: true, doneEnabled: !session.pending.length, nameShown: session.humans.length === 1 })
 }
 
 /**
@@ -203,6 +205,7 @@ export const continueTurn = (item: DomItem): void => {
   } else if (session.stage === 'chosen') {
     startRound(session, session.order)
   } else if (session.stage === 'handoff') {
+    readName(session, current(session))
     session.stage = 'placing'
     session.pending = [...defaultShipSpecs]
     session.start = null
