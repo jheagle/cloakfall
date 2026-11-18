@@ -583,3 +583,96 @@ body.has-turn-banner main.game > .boards
 @media (max-height: 500px) and (min-width: 600px) and (prefers-reduced-motion: no-preference)
   .turn-banner.is-new
     animation-name: turn-banner-in-side
+
+// Phones (CLOA-21, family feedback 2026-11-17: "buttons are too small", "the board should fill the screen"). The same
+// query as src/view/playerBar.ts's PHONE_MEDIA.
+@media (max-width: 759px), (max-height: 500px)
+  // Touch targets at least 48px tall, text at least 18px (also above iOS's 16px, under which it zooms into a field)
+  .main-menu-form, .remote-entry, .waiting-room, .final-scores
+    input:not([type='checkbox']), select, button
+      min-height: 4.8rem
+      font-size: 1.8rem
+
+    input:not([type='checkbox']):not([type='submit'])
+      width: min(24rem, 90%)
+      padding: .6rem 1rem
+      box-sizing: border-box
+
+    select
+      padding: .6rem 1rem
+      border-radius: .6rem
+
+    input[type='checkbox']
+      width: 2.4rem
+      height: 2.4rem
+
+    input[type='submit'], button.remote-choice-host, button.remote-choice-join, button.remote-host-submit, button.remote-code-submit, button.remote-join-submit
+      width: min(28rem, 90%)
+
+    // Not floated: at this size it would push the form's fields out of line
+    .lobby-back, .remote-back, .remote-sub-back, .waiting-room-leave
+      float: none
+      display: block
+      min-height: 4.4rem
+      padding: .8rem 1.8rem
+      font-size: 1.6rem
+
+    // A dropdown gets a row of its own, so its longest choice isn't cut off
+    .form-group:has(select)
+      width: 100%
+
+    select
+      width: min(38rem, 92%)
+
+  // The own board's drawer and the turn banner both want the top of the screen: the banner steps aside while it is open
+  body.own-board-open .turn-banner
+    visibility: hidden
+
+  // The placement panel: its buttons share the width, side by side, each at least 52px tall
+  .placement
+    display: flex
+    flex-wrap: wrap
+    justify-content: center
+    gap: .8rem
+    padding: 1.2rem
+
+    p, .placement-name
+      flex: 1 1 100%
+
+    p
+      margin: 0
+
+    .placement-name
+      max-width: none
+      margin: 0
+      min-height: 4.8rem
+
+    button
+      flex: 1 1 14rem
+      min-width: 0
+      min-height: 5.2rem
+      margin: 0
+      font-size: 2rem
+
+@media (max-width: 759px) and (min-height: 501px)
+  // Upright phones (sideways ones are sized by height above, with the turn banner in the corner): the board fills the
+  // width (less the page's edges), but never so tall that it runs under the bar or the panel:
+  // the smaller of a tenth of the width and a tenth of the height left (about 22rem goes to the turn banner, the
+  // board's name line, the player bar or the placement panel). dvh follows Safari's toolbar; vh is the fallback.
+  main.game > .boards
+    padding-left: .8rem
+    padding-right: .8rem
+
+    > .player
+      padding: .2rem
+
+    > .player:not(.role-own) .matrix .layer .row .column
+      height: clamp(1.6rem, min(calc((100vw - 4rem) / 10), calc((100vh - 22rem) / 10)), 6rem)
+      height: clamp(1.6rem, min(calc((100vw - 4rem) / 10), calc((100dvh - 22rem) / 10)), 6rem)
+      width: clamp(1.6rem, min(calc((100vw - 4rem) / 10), calc((100vh - 22rem) / 10)), 6rem)
+      width: clamp(1.6rem, min(calc((100vw - 4rem) / 10), calc((100dvh - 22rem) / 10)), 6rem)
+
+  // The own board's drawer: its board fills the drawer's width too
+  body.has-player-bar main.game > .boards > .player.role-own .matrix .layer .row .column
+    height: clamp(2.6rem, calc((min(92vw, 36rem) - 4rem) / 10), 3.4rem)
+    width: clamp(2.6rem, calc((min(92vw, 36rem) - 4rem) / 10), 3.4rem)
