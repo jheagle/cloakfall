@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { OWN_BOARD_EVENT, SHOT_ALERT_MS, boardToShow, inPlay, initialBarState, installPlayerBar, nextBarState, oneBoardCss, readPlayers } from './playerBar'
+import { OWN_BOARD_EVENT, SHOT_ALERT_MS, boardToShow, inPlay, initialBarState, installPlayerBar, nextBarState, oneBoardCss, PHONE_MEDIA, readPlayers } from './playerBar'
 
 const player = (index, overrides = {}) => ({
   index,
@@ -102,10 +102,14 @@ describe('inPlay', () => {
 })
 
 describe('oneBoardCss', () => {
-  test('hides every other opponent\'s board on a narrow screen, never my own', () => {
+  test('hides every other opponent\'s board on a phone, never my own', () => {
     const css = oneBoardCss(2)
-    expect(css).toMatch(/@media \(max-width: \d+px\)/)
+    expect(css).toContain(`@media ${PHONE_MEDIA}`)
     expect(css).toContain('.player:not(.role-own):not(:nth-child(3))')
+  })
+
+  test('a phone held sideways (short, however wide) gets the phone layout too', () => {
+    expect(PHONE_MEDIA).toBe('(max-width: 759px), (max-height: 500px)')
   })
 
   test('nothing to hide when there is no board to choose', () => {
