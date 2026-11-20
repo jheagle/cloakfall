@@ -62,6 +62,33 @@ docker run --rm -p 3002:3002 cloakfall-lobby
 curl http://localhost:3002/status
 ```
 
+## Releasing to joshuaheagle.com
+
+A release has two halves that go live separately: the game page on the website (GitHub Pages) and the lobby server on
+the VPS. Do both, or online games run one version's page against another version's server.
+
+After `npx release-it --no-increment` on `main`:
+
+1. **Website copy.** The website checkout must sit next to this repo (`../joshuaheagle.local`). `npm run build` doesn't
+   copy, so:
+   ```
+   npm run build && npx gulp copyFiles && npm run docs
+   cd ../joshuaheagle.local && npm run build:fingerprint && npm test
+   ```
+   Open a website PR with `projects/cloakfall/` (bundle, CSS, `play.html` fingerprints, docs). Once it's merged, check
+   `play.html` loads the new `cloakfall.js?v=...` and the bundle's `exports.version` is the new version.
+2. **Lobby server** (`cloakfall.joshuaheagle.com`, behind Caddy, checkout in `/srv/cloakfall`):
+   ```
+   ssh ubuntu@158.69.113.166
+   cd /srv/cloakfall && git pull && docker build -t cloakfall-lobby . && docker compose up -d
+   ```
+   Check `https://cloakfall.joshuaheagle.com/status` reports the new version and `docker ps` shows the container
+   healthy. The old image is left untagged; remove it only after listing it (`docker images -f dangling=true`).
+
+The lobby needs redeploying for every release, even one with no server changes: `/status` reports the version, and the
+server holds shared game code too. 2026-11-19: the lobby was still on 2.1.0 after 2.1.1 shipped, so online games missed
+2.1.1's turn-order names.
+
 ## Checking full games in a browser
 
 Three scripts play a whole game in a real headless Chromium (Playwright) against the built page, and fail when the game
