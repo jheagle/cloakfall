@@ -11,6 +11,7 @@ import { stopGame } from './gameSession'
 import showShipsControl from '../components/layout/showShipsControl'
 import shadeShips from '../cells/shadeShips'
 import { listenForOwnBoard } from './ownBoardReveal'
+import { trackGameStart } from '../track'
 import type { GameMode, HintSetting } from './gameOptions'
 import type { DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { Player } from '../types'
@@ -101,6 +102,8 @@ export const startNewGame = (
   players.filter(player => !player.isRobot).forEach(player => { player.showHint = hints === 'on' })
   onPlayersBuilt(players)
   const mode = getGameMode(parent)
+  // Local games only: an online game is built on the server, and each page counts it in remoteGame.ts
+  trackGameStart(parent, mode, { humans, robots, hints })
   placementStarter(players, parent.body, order => {
     // Only once placement is actually finished - any earlier would shrink/pin boards while a human is still
     // trying to place ships on them.

@@ -14,6 +14,7 @@ import startMenu from './setup/startMenu'
 import gameRoot from './setup/gameRoot'
 import treeloom from 'treeloom'
 import { isNode } from 'browser-or-node'
+import { trackErrors, trackLinks } from './track'
 
 const cloakfall = (): void => {
   // Create new private reference to the document. In a browser the game renders into a <main> (see gameRoot), under a
@@ -44,6 +45,9 @@ const cloakfall = (): void => {
     const submitBtn = treeloom.getChildrenFromAttribute('type', 'submit', form)
     ;(submitBtn[0].element as HTMLElement).click()
   } else {
+    // Anonymous play events, on the website's copy only (see track.ts)
+    trackErrors()
+    trackLinks()
     // A shared join link (see remoteListener.ts's enterWaitingRoom) puts the room's own code here - jump
     // straight to the join form with it already filled in, instead of making a joiner read it off the host and
     // type it in by hand.

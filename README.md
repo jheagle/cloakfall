@@ -62,6 +62,26 @@ docker run --rm -p 3002:3002 cloakfall-lobby
 curl http://localhost:3002/status
 ```
 
+## Play events (GoatCounter)
+
+The website's copy of the game counts anonymous play events with [GoatCounter](https://www.goatcounter.com/help/events)
+(`src/track.ts`), to see how people play and what to fix. It only happens on a page that loads GoatCounter's script
+(`<script data-goatcounter=...>`); this repo's own `index.html`, the tests and the server send nothing. Events never
+contain a player's name or anything typed, and each one counts every time it happens (not once per visitor).
+
+| Event | When |
+|---|---|
+| `cloakfall-menu-<mode>` | a game type chosen on the main menu (`solo`, `multi`, `robots`, `online`) |
+| `cloakfall-start-<mode>` | a game starts (Restart and Play Again included); the intro's demo game is never counted |
+| `cloakfall-players-<mode>-<h>h-<r>r`, `cloakfall-hints-<mode>-<setting>` | the settings it started with |
+| `cloakfall-finish-<mode>`, `cloakfall-turns-<mode>-<range>` | it reached the final score, and roughly how many turns it took (local games) |
+| `cloakfall-finish-solo-won` / `-lost` | single player: whether the human won |
+| `cloakfall-abandon-<mode>-<how>` | left before the end: `restart`, `quit`, `leave` (online) or `close` (tab closed, best effort) |
+| `cloakfall-online-host`, `cloakfall-online-join` | an online room created or joined |
+| `cloakfall-hint-checkbox-on` / `-off` | the hint checkbox switched (local games) |
+| `cloakfall-link-whats-new`, `cloakfall-link-server-status` | a menu link opened (any link with `data-track`) |
+| `cloakfall-error`, `cloakfall-error-promise` | an uncaught error (titled with file and line, at most 5 per page) |
+
 ## Checking full games in a browser
 
 Three scripts play a whole game in a real headless Chromium (Playwright) against the built page, and fail when the game
@@ -218,6 +238,15 @@ player keeps their own view.</p>
 ## Constants
 
 <dl>
+<dt><a href="#waiting">waiting</a></dt>
+<dd><p>Events waiting for count.js, which loads async; dropped if it never comes (blocked, offline).</p>
+</dd>
+<dt><a href="#ignored">ignored</a></dt>
+<dd><p>Roots whose games are never counted: the intro&#39;s demo game behind the menu.</p>
+</dd>
+<dt><a href="#inProgress">inProgress</a></dt>
+<dd><p>Games started and not yet finished or left, per page root: what a quit, restart or closed tab abandons.</p>
+</dd>
 <dt><a href="#pending">pending</a></dt>
 <dd><p>The pending random shot, per game root: whose turn it is waiting on, and its timer.</p>
 </dd>
@@ -258,6 +287,37 @@ should be a single turn. Remote play already blocks the same thing independently
 <dl>
 <dt><a href="#releaseNotesUrl">releaseNotesUrl(forVersion)</a></dt>
 <dd><p>The release notes (&quot;what&#39;s new&quot;) for a version.</p>
+</dd>
+<dt><a href="#pageCounts">pageCounts()</a></dt>
+<dd><p>Whether this page counts at all: the website&#39;s copy loads count.js with a data-goatcounter attribute.</p>
+</dd>
+<dt><a href="#eventPath">eventPath(name)</a></dt>
+<dd><p>An event name made safe and stable: lower case, letters, digits and dashes only.</p>
+</dd>
+<dt><a href="#track">track(name, title)</a></dt>
+<dd><p>Count one event. Does nothing on a page without the counter.</p>
+</dd>
+<dt><a href="#ignoreGames">ignoreGames(root)</a></dt>
+<dd><p>Never count games on this root (the intro&#39;s demo, which robots play behind the menu).</p>
+</dd>
+<dt><a href="#turnsBucket">turnsBucket(turns)</a></dt>
+<dd><p>A game&#39;s turns, rounded down into a few ranges so the dashboard groups them.</p>
+</dd>
+<dt><a href="#trackGameStart">trackGameStart(root, mode, settings)</a></dt>
+<dd><p>A game started: its mode, and the settings it started with.</p>
+</dd>
+<dt><a href="#trackGameEnd">trackGameEnd(root, turns, outcome)</a></dt>
+<dd><p>A game reached its final score.</p>
+</dd>
+<dt><a href="#trackAbandon">trackAbandon(root, how)</a></dt>
+<dd><p>A game in progress was left: restarted, quit to the menu, left (online), or the tab closed. Nothing is counted
+when no game is in progress (the final score, the menu).</p>
+</dd>
+<dt><a href="#trackErrors">trackErrors()</a></dt>
+<dd><p>Count the page&#39;s uncaught errors (at most 5 per page), titled with where they happened, not their message.</p>
+</dd>
+<dt><a href="#trackLinks">trackLinks()</a></dt>
+<dd><p>Count clicks on links marked with data-track (e.g. What&#39;s new), through one listener on the document.</p>
 </dd>
 <dt><a href="#queueTimeout">queueTimeout(item, fn, time, ...args)</a></dt>
 <dd><p>The timed queue the given item&#39;s game runs on: steps queued here run one after another, after their delay. Each
@@ -1618,6 +1678,24 @@ games keep their pace: a robot takes its own time before firing (computerAttack'
 player keeps their own view.
 
 **Kind**: global variable  
+<a name="waiting"></a>
+
+## waiting
+Events waiting for count.js, which loads async; dropped if it never comes (blocked, offline).
+
+**Kind**: global constant  
+<a name="ignored"></a>
+
+## ignored
+Roots whose games are never counted: the intro's demo game behind the menu.
+
+**Kind**: global constant  
+<a name="inProgress"></a>
+
+## inProgress
+Games started and not yet finished or left, per page root: what a quit, restart or closed tab abandons.
+
+**Kind**: global constant  
 <a name="pending"></a>
 
 ## pending
@@ -1683,6 +1761,108 @@ The release notes ("what's new") for a version.
 | --- | --- |
 | forVersion | Defaults to this build's own. |
 
+<a name="pageCounts"></a>
+
+## pageCounts()
+Whether this page counts at all: the website's copy loads count.js with a data-goatcounter attribute.
+
+**Kind**: global function  
+<a name="eventPath"></a>
+
+## eventPath(name)
+An event name made safe and stable: lower case, letters, digits and dashes only.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| name | 
+
+<a name="track"></a>
+
+## track(name, title)
+Count one event. Does nothing on a page without the counter.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| name | e.g. 'start-solo'; becomes cloakfall-start-solo |
+| title | a short description shown next to it on the dashboard (never user text) |
+
+<a name="ignoreGames"></a>
+
+## ignoreGames(root)
+Never count games on this root (the intro's demo, which robots play behind the menu).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| root | 
+
+<a name="turnsBucket"></a>
+
+## turnsBucket(turns)
+A game's turns, rounded down into a few ranges so the dashboard groups them.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| turns | 
+
+<a name="trackGameStart"></a>
+
+## trackGameStart(root, mode, settings)
+A game started: its mode, and the settings it started with.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| root | the page's game root |
+| mode |  |
+| settings | humans, robots and the hint setting (online: the robots and hints the host chose) |
+
+<a name="trackGameEnd"></a>
+
+## trackGameEnd(root, turns, outcome)
+A game reached its final score.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| root |  |
+| turns | every turn taken in the game, all players together (unknown online) |
+| outcome | single player only: whether the human won |
+
+<a name="trackAbandon"></a>
+
+## trackAbandon(root, how)
+A game in progress was left: restarted, quit to the menu, left (online), or the tab closed. Nothing is counted
+when no game is in progress (the final score, the menu).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| root | 
+| how | 
+
+<a name="trackErrors"></a>
+
+## trackErrors()
+Count the page's uncaught errors (at most 5 per page), titled with where they happened, not their message.
+
+**Kind**: global function  
+<a name="trackLinks"></a>
+
+## trackLinks()
+Count clicks on links marked with data-track (e.g. What's new), through one listener on the document.
+
+**Kind**: global function  
 <a name="queueTimeout"></a>
 
 ## queueTimeout(item, fn, time, ...args)

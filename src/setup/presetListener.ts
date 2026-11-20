@@ -1,6 +1,7 @@
 import treeloom from 'treeloom'
 import { gamePresets } from './gamePresets'
 import { show, showLobby } from './showLobby'
+import { track } from '../track'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 
 /**
@@ -14,6 +15,7 @@ const presetListener = (e: Event, target: DomItem): void => {
   const menu = treeloom.getChildrenByClass('main-menu', treeloom.getTopParentItem(target).body)[0]
   const preset = Object.keys(gamePresets).find(name => className.includes(name))
   if (preset) {
+    track(`menu-${gamePresets[preset].mode}`, `Menu: ${gamePresets[preset].mode}`)
     showLobby(menu, gamePresets[preset])
   } else if (className.includes('lobby-back')) {
     show(treeloom.getChildrenByClass('main-menu-form', menu)[0], false)

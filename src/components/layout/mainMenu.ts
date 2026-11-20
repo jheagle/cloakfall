@@ -27,8 +27,8 @@ const mainMenu = (): DomItem => treeloom.createDomItem({
           nodeName: 'p',
           attributes: {
             className: 'version-line',
-            innerHTML: `v${version} · <a href="${releaseNotesUrl()}" target="_blank" rel="noopener">What's new</a> · ` +
-              '<a href="status.html" target="_blank" rel="noopener">Server status</a>'
+            innerHTML: `v${version} · <a href="${releaseNotesUrl()}" target="_blank" rel="noopener" data-track="whats-new">What's new</a> · ` +
+              '<a href="status.html" target="_blank" rel="noopener" data-track="server-status">Server status</a>'
           }
         },
         {

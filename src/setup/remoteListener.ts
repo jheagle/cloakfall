@@ -7,6 +7,7 @@ import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { HintSetting } from './gameOptions'
 import type { RoomState } from '../../server/lobbyServer'
 import { htmlEscape } from 'si-funciona'
+import { track } from '../track'
 
 /** The room's own last known state (its code, name, host, and players) - kept up to date by renderRoomState
  * below regardless of whether the waiting room is currently shown, so Play Again (see remotePlayAgainListener.ts)
@@ -160,6 +161,7 @@ const remoteListener = async (e: Event, target: DomItem): Promise<void> => {
   const entry = treeloom.getChildrenByClass('remote-entry', menu)[0]
 
   if (className.includes('preset-remote')) {
+    track('menu-online', 'Menu: online')
     showRemoteEntry(menu)
     return
   }
@@ -205,6 +207,7 @@ const remoteListener = async (e: Event, target: DomItem): Promise<void> => {
       update(treeloom.getChildrenByClass('remote-host-status', entry)[0], { innerHTML: result.error })
       return
     }
+    track('online-host', 'Online: room created')
     enterWaitingRoom(menu, result)
     return
   }
@@ -223,6 +226,7 @@ const remoteListener = async (e: Event, target: DomItem): Promise<void> => {
       return
     }
     pendingJoinCode = null
+    track('online-join', 'Online: joined a room')
     enterWaitingRoom(menu, result)
     return
   }
@@ -237,7 +241,12 @@ const remoteListener = async (e: Event, target: DomItem): Promise<void> => {
     const ack = await startGame(hints, robots)
     if ('error' in ack) {
       update(treeloom.getChildrenByClass('waiting-room-status', waitingRoom)[0], { innerHTML: ack.error })
+      return
     }
+    // The host's choices; every page counts the game itself (remoteGame.ts)
+    const players = getLastRoomState()?.players?.length
+    track(players === undefined ? `players-online-${robots}r` : `players-online-${players}h-${robots}r`, `online: host started with ${robots} robot(s)`)
+    track(`hints-online-${hints}`, `online: hints ${hints}`)
   }
 }
 
