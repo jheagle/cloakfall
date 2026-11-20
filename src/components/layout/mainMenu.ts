@@ -1,5 +1,6 @@
 import treeloom from 'treeloom'
 import { releaseNotesUrl, version } from '../../version'
+import { aboutSection } from './credits'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 
 const listener = (listenerFunc: string) => [{ listenerFunc, listenerArgs: {}, listenerOptions: false }]
@@ -31,6 +32,8 @@ const mainMenu = (): DomItem => treeloom.createDomItem({
               '<a href="status.html" target="_blank" rel="noopener" data-track="server-status">Server status</a>'
           }
         },
+        // Who made the game, and what it counts (credits.ts)
+        aboutSection(),
         {
           nodeName: 'div',
           attributes: {

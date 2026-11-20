@@ -264,6 +264,9 @@ play, controls inside it belong to that player alone: the lobby lets their owner
 is someone else&#39;s turn, and nobody else at all (lobbyServer.ts&#39;s gameAction; redactGameState.ts removes them from
 everyone else&#39;s view).</p>
 </dd>
+<dt><a href="#CREDIT_LINKS">CREDIT_LINKS</a></dt>
+<dd><p>Where the game&#39;s credits point. Absolute, so they work from the repo&#39;s own page too, not only the website&#39;s copy.</p>
+</dd>
 <dt><a href="#HIT_PAUSE_MS">HIT_PAUSE_MS</a></dt>
 <dd><p>How long a shot&#39;s result stays in view before the turn passes, in local multiplayer: there the whole screen switches
 to the next player&#39;s point of view at once, so without a pause the shooter never saw where their shot landed. Other
@@ -1324,6 +1327,17 @@ game: how many humans and robots, the hint setting, and who goes first. Start in
 places ships again), Change Settings (back to the lobby, pre-filled with this game&#39;s settings), and Main Menu
 (back to choosing the game type).</p>
 </dd>
+<dt><a href="#link">link(href, text, track)</a></dt>
+<dd><p>A link that opens in a new tab (so the game is kept), counted as a play event when clicked (data-track, see
+track.ts&#39;s trackLinks).</p>
+</dd>
+<dt><a href="#aboutSection">aboutSection()</a></dt>
+<dd><p>The main menu&#39;s About: who made the game, where to find more of their work and the game&#39;s code, and what the game
+counts. A <details>, so it stays one line until opened and needs no listener.</p>
+</dd>
+<dt><a href="#creditLine">creditLine(track)</a></dt>
+<dd><p>One line under the final scores: who made the game, and where to find more.</p>
+</dd>
 <dt><a href="#boards">boards(players)</a></dt>
 <dd><p>Wrapper div for player data / boards</p>
 </dd>
@@ -1704,6 +1718,12 @@ The class of a player's own controls (the sensor-scan checkbox today; the in-gam
 play, controls inside it belong to that player alone: the lobby lets their owner use them at any time, even when it
 is someone else's turn, and nobody else at all (lobbyServer.ts's gameAction; redactGameState.ts removes them from
 everyone else's view).
+
+**Kind**: global variable  
+<a name="CREDIT_LINKS"></a>
+
+## CREDIT\_LINKS
+Where the game's credits point. Absolute, so they work from the repo's own page too, not only the website's copy.
 
 **Kind**: global variable  
 <a name="HIT_PAUSE_MS"></a>
@@ -4449,6 +4469,38 @@ places ships again), Change Settings (back to the lobby, pre-filled with this ga
 | Param |
 | --- |
 | players | 
+
+<a name="link"></a>
+
+## link(href, text, track)
+A link that opens in a new tab (so the game is kept), counted as a play event when clicked (data-track, see
+track.ts's trackLinks).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| href | 
+| text | 
+| track | 
+
+<a name="aboutSection"></a>
+
+## aboutSection()
+The main menu's About: who made the game, where to find more of their work and the game's code, and what the game
+counts. A <details>, so it stays one line until opened and needs no listener.
+
+**Kind**: global function  
+<a name="creditLine"></a>
+
+## creditLine(track)
+One line under the final scores: who made the game, and where to find more.
+
+**Kind**: global function  
+
+| Param | Default | Description |
+| --- | --- | --- |
+| track | <code>credit-final</code> | the data-track name, so the menu's and each final score's clicks can be told apart |
 
 <a name="boards"></a>
 

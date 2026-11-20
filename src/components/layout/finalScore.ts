@@ -2,6 +2,7 @@ import treeloom from 'treeloom'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { Player } from '../../types'
 import { htmlEscape } from 'si-funciona'
+import { creditLine } from './credits'
 
 /**
  * Display the final scores after a game has ended, with three ways to go on: Play Again (same settings,
@@ -74,7 +75,9 @@ const finalScore = (players: Player[] = []): DomItem => treeloom.createDomItem({
           }
         }
       ]
-    }
+    },
+    // Who made the game (credits.ts)
+    creditLine('credit-final')
   ]
 })
 
