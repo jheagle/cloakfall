@@ -32,9 +32,10 @@ export interface NewShot {
  */
 export const hitShipOf = (cell: HTMLElement): HitShip | undefined => {
   const { ship, shipHits, shipSize } = cell.dataset
+  // Number('') is 0, so a missing count must not pass as one: a named hit has struck 1 to size parts
   const hits = Number(shipHits)
   const size = Number(shipSize)
-  return ship && Number.isInteger(hits) && Number.isInteger(size) && size > 0 ? { name: ship, hits, size } : undefined
+  return ship && Number.isInteger(hits) && Number.isInteger(size) && hits >= 1 && hits <= size ? { name: ship, hits, size } : undefined
 }
 
 /** What the bar uses: find the new shots, or start afresh (a new game). */

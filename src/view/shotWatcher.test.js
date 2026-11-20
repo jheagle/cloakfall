@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import createShotWatcher, { flashShot } from './shotWatcher'
+import createShotWatcher, { flashShot, hitShipOf } from './shotWatcher'
 
 const mainWith = shotsPerBoard => {
   const main = document.createElement('main')
@@ -52,5 +52,27 @@ describe('flashShot', () => {
 
   test('does nothing where there is no Web Animations API', () => {
     expect(() => flashShot({ index: 0, result: 'miss', cell: document.createElement('div') }, false)).not.toThrow()
+  })
+})
+
+describe('hitShipOf (CLOA-22)', () => {
+  const cell = data => {
+    const element = document.createElement('div')
+    Object.entries(data).forEach(([key, value]) => { element.dataset[key] = value })
+    return element
+  }
+
+  test('reads the ship a hit cell names: name, hits so far, size', () => {
+    expect(hitShipOf(cell({ ship: 'Cruiser', shipHits: '1', shipSize: '3' }))).toEqual({ name: 'Cruiser', hits: 1, size: 3 })
+    expect(hitShipOf(cell({ ship: 'Scout', shipHits: '2', shipSize: '2' }))).toEqual({ name: 'Scout', hits: 2, size: 2 })
+  })
+
+  test('anything incomplete or impossible names no ship (the bar then says just "Hit")', () => {
+    expect(hitShipOf(cell({}))).toBeUndefined()
+    // A missing count would read as 0 (Number('') is 0): not "Cruiser 0/3"
+    expect(hitShipOf(cell({ ship: 'Cruiser', shipSize: '3' }))).toBeUndefined()
+    expect(hitShipOf(cell({ ship: 'Cruiser', shipHits: '4', shipSize: '3' }))).toBeUndefined()
+    expect(hitShipOf(cell({ ship: 'Cruiser', shipHits: 'x', shipSize: '3' }))).toBeUndefined()
+    expect(hitShipOf(cell({ shipHits: '1', shipSize: '3' }))).toBeUndefined()
   })
 })
