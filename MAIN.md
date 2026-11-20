@@ -77,13 +77,14 @@ After `npx release-it --no-increment` on `main`:
    ```
    Open a website PR with `projects/cloakfall/` (bundle, CSS, `play.html` fingerprints, docs). Once it's merged, check
    `play.html` loads the new `cloakfall.js?v=...` and the bundle's `exports.version` is the new version.
-2. **Lobby server** (`cloakfall.joshuaheagle.com`, behind Caddy, checkout in `/srv/cloakfall`):
+2. **Lobby server** (`cloakfall.joshuaheagle.com`: a VPS running this repo's `Dockerfile` behind a reverse proxy). On
+   the server's checkout, pull, rebuild the image and restart the container (see
+   [Running the lobby in Docker](#running-the-lobby-in-docker)):
    ```
-   ssh ubuntu@158.69.113.166
-   cd /srv/cloakfall && git pull && docker build -t cloakfall-lobby . && docker compose up -d
+   git pull && docker build -t cloakfall-lobby . && docker compose up -d
    ```
-   Check `https://cloakfall.joshuaheagle.com/status` reports the new version and `docker ps` shows the container
-   healthy. The old image is left untagged; remove it only after listing it (`docker images -f dangling=true`).
+   Check `https://cloakfall.joshuaheagle.com/status` reports the new version. (The maintainer's host details are kept
+   privately.)
 
 The lobby needs redeploying for every release, even one with no server changes: `/status` reports the version, and the
 server holds shared game code too. 2026-11-19: the lobby was still on 2.1.0 after 2.1.1 shipped, so online games missed
