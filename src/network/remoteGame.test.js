@@ -84,6 +84,30 @@ describe('enterRemoteGame: forwarding toggles off once the game ends, and back o
     await waitFor(() => Boolean(root.forwardEvents))
   })
 
+  test('on a page with GoatCounter: a game counts as started, finished on its final scores, and started again on Play Again', async () => {
+    document.head.innerHTML = '<script data-goatcounter="https://example.goatcounter.com/count"></script>'
+    const sent = []
+    window.goatcounter = { count: vars => sent.push(vars.path) }
+    try {
+      const socket = connectLobbySocket(baseUrl)
+      await waitFor(() => socket.connected)
+      const root = treeloom.documentDomItem({})
+      enterRemoteGame(root, bodyWithClass('boards'))
+      // A second push of the same game counts nothing new
+      io.emit('gameUpdate', bodyWithClass('boards'))
+      io.emit('gameUpdate', bodyWithClass('final-scores'))
+      await waitFor(() => !root.forwardEvents)
+      io.emit('gameUpdate', bodyWithClass('final-scores'))
+      io.emit('gameUpdate', bodyWithClass('boards'))
+      await waitFor(() => Boolean(root.forwardEvents))
+      expect(sent).toEqual(['cloakfall-start-online', 'cloakfall-finish-online', 'cloakfall-start-online'])
+      leaveRemoteGame(root)
+    } finally {
+      delete window.goatcounter
+      document.head.innerHTML = ''
+    }
+  })
+
   test('leaveRemoteGame always turns forwarding off and clears the rendered tree, regardless of game-over state', () => {
     const root = treeloom.documentDomItem({})
     enterRemoteGame(root, bodyWithClass('boards'))

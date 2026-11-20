@@ -90,6 +90,26 @@ The lobby needs redeploying for every release, even one with no server changes: 
 server holds shared game code too. 2026-11-19: the lobby was still on 2.1.0 after 2.1.1 shipped, so online games missed
 2.1.1's turn-order names.
 
+## Play events (GoatCounter)
+
+The website's copy of the game counts anonymous play events with [GoatCounter](https://www.goatcounter.com/help/events)
+(`src/track.ts`), to see how people play and what to fix. It only happens on a page that loads GoatCounter's script
+(`<script data-goatcounter=...>`); this repo's own `index.html`, the tests and the server send nothing. Events never
+contain a player's name or anything typed, and each one counts every time it happens (not once per visitor).
+
+| Event | When |
+|---|---|
+| `cloakfall-menu-<mode>` | a game type chosen on the main menu (`solo`, `multi`, `robots`, `online`) |
+| `cloakfall-start-<mode>` | a game starts (Restart and Play Again included); the intro's demo game is never counted |
+| `cloakfall-players-<mode>-<h>h-<r>r`, `cloakfall-hints-<mode>-<setting>` | the settings it started with |
+| `cloakfall-finish-<mode>`, `cloakfall-turns-<mode>-<range>` | it reached the final score, and roughly how many turns it took (local games) |
+| `cloakfall-finish-solo-won` / `-lost` | single player: whether the human won |
+| `cloakfall-abandon-<mode>-<how>` | left before the end: `restart`, `quit`, `leave` (online) or `close` (tab closed, best effort) |
+| `cloakfall-online-host`, `cloakfall-online-join` | an online room created or joined |
+| `cloakfall-hint-checkbox-on` / `-off` | the hint checkbox switched (local games) |
+| `cloakfall-link-whats-new`, `cloakfall-link-server-status` | a menu link opened (any link with `data-track`) |
+| `cloakfall-error`, `cloakfall-error-promise` | an uncaught error (titled with file and line, at most 5 per page) |
+
 ## Checking full games in a browser
 
 Three scripts play a whole game in a real headless Chromium (Playwright) against the built page, and fail when the game

@@ -7,6 +7,7 @@ import { leaveOnlineGame } from './remoteLeaveListener'
 import { getLastRoomState } from './remoteListener'
 import { getSocketId, hostGameAction } from '../network/lobbySocket'
 import startMenu from './startMenu'
+import { trackAbandon } from '../track'
 import type { GameAction } from '../view/controlPanel'
 import type { DomItemRoot } from 'treeloom/dist/domItem/types'
 
@@ -70,6 +71,7 @@ export const runGameAction = (root: DomItemRoot, action: string, checked: boolea
     const { humans, robots, firstGoesFirst } = getGameSettings(root)
     startNewGame(root, humans, robots, firstGoesFirst, getHintSetting(root))
   } else if (action === 'quit') {
+    trackAbandon(root, 'quit')
     stopGame(root)
     startMenu(root)
   }

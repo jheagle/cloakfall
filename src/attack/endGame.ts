@@ -2,6 +2,7 @@ import treeloom from 'treeloom'
 import finalScore from '../components/layout/finalScore'
 import updatePlayerStats from './updatePlayerStats'
 import { getSession } from '../setup/gameSession'
+import { trackGameEnd } from '../track'
 import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { Player } from '../types'
 
@@ -17,6 +18,13 @@ const endGame = (winner: Player): Player[] => {
   const players = (winner.parentItem as DomItem).children as Player[]
   players.map(player => updatePlayerStats(player))
   winner = updatePlayerStats(winner, 'WINNER')
+  // Single player: whether the human is the one left
+  const humans = players.filter(player => !player.isRobot)
+  trackGameEnd(
+    parent,
+    players.reduce((turns, player) => turns + (player.turnCnt || 0), 0),
+    humans.length === 1 && players.length > 1 ? (winner.isRobot ? 'lost' : 'won') : undefined
+  )
   const onGameOver = getSession(parent).onGameOver
   if (onGameOver) {
     onGameOver(players, parent)
