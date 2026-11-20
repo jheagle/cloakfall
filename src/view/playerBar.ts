@@ -13,6 +13,7 @@
 import createControlPanel from './controlPanel'
 import createTurnBanner from './turnBanner'
 import createShotWatcher, { flashShot } from './shotWatcher'
+import type { NewShot } from './shotWatcher'
 
 /** Wider than this, every board is shown (side by side); narrower, one opponent at a time. */
 export const ONE_BOARD_MAX_WIDTH_PX = 759
@@ -234,20 +235,58 @@ const setAttribute = (element: Element, name: string, value: string | null): voi
   }
 }
 
+/** A shot just shown on a player's entry: hit or miss, and for a hit, the ship it struck (shotWatcher.ts). */
+export type ShotAlert = Pick<NewShot, 'result' | 'ship'>
+
+/**
+ * What a player's entry says for a shot that just landed on their board: "Miss", or the ship a hit struck and its hits
+ * so far ("Hit: Cruiser 1/3"), "Sunk: Cruiser" for the hit that sinks it, or just "Hit" when the cell names no ship.
+ * @param alert
+ */
+export const shotAlertText = (alert?: ShotAlert): string => {
+  if (!alert) {
+    return ''
+  }
+  if (alert.result === 'miss') {
+    return 'Miss'
+  }
+  const { ship } = alert
+  if (!ship) {
+    return 'Hit'
+  }
+  return ship.hits >= ship.size ? `Sunk: ${ship.name}` : `Hit: ${ship.name} ${ship.hits}/${ship.size}`
+}
+
+/**
+ * What a screen reader hears when a shot lands on the viewer's own fleet (their board may be out of sight in its
+ * drawer): which ship was hit and how badly, or that it sank.
+ * @param alert
+ */
+export const ownShotAnnouncement = (alert: ShotAlert): string => {
+  if (alert.result === 'miss') {
+    return 'A shot missed your fleet'
+  }
+  const { ship } = alert
+  if (!ship) {
+    return 'Your fleet was hit'
+  }
+  return ship.hits >= ship.size ? `Your ${ship.name} was sunk` : `Your ${ship.name} was hit, ${ship.hits} of ${ship.size}`
+}
+
 /**
  * Bring an entry up to date, changing only what differs.
  * @param item
  * @param player
  * @param shown
  * @param ownOpen whether the viewer's own board's drawer is open, or null where there is no drawer (wide screens)
- * @param alert a shot that just landed on this player's board, shown for a moment ("Hit" / "Miss"), or undefined
+ * @param alert a shot that just landed on this player's board, shown for a moment (shotAlertText), or undefined
  */
-const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | null, ownOpen: boolean | null, alert?: 'hit' | 'miss'): void => {
+const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | null, ownOpen: boolean | null, alert?: ShotAlert): void => {
   const entry = item.firstElementChild as HTMLElement
   const [name, status, turn, alertText] = Array.from(entry.children) as HTMLElement[]
-  entry.classList.toggle('was-hit', alert === 'hit')
-  entry.classList.toggle('was-missed', alert === 'miss')
-  setText(alertText, alert === 'hit' ? 'Hit' : alert === 'miss' ? 'Miss' : '')
+  entry.classList.toggle('was-hit', alert?.result === 'hit')
+  entry.classList.toggle('was-missed', alert?.result === 'miss')
+  setText(alertText, shotAlertText(alert))
   if (entry.style.getPropertyValue('--player-colour') !== player.colour) {
     entry.style.setProperty('--player-colour', player.colour)
   }
@@ -276,7 +315,7 @@ const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | nul
  * @param actions
  * @param alerts shots that just landed, by player id (shotWatcher.ts)
  */
-const renderBar = (list: HTMLElement, players: BarPlayer[], shown: number | null, ownOpen: boolean | null, actions: BarActions, alerts: Map<string, 'hit' | 'miss'> = new Map()): void => {
+const renderBar = (list: HTMLElement, players: BarPlayer[], shown: number | null, ownOpen: boolean | null, actions: BarActions, alerts: Map<string, ShotAlert> = new Map()): void => {
   const items = Array.from(list.children) as HTMLLIElement[]
   const same = items.length === players.length &&
     players.every((player, i) => items[i].dataset.index === String(player.index) && items[i].dataset.own === String(player.own))
@@ -330,7 +369,7 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
   // Shots as they land (shotWatcher.ts): the struck cell flashes, and its player's entry says "Hit" / "Miss" for a
   // moment. Results on the viewer's own board are also announced (their board may be out of sight in its drawer).
   const shots = createShotWatcher()
-  const alerts = new Map<string, 'hit' | 'miss'>()
+  const alerts = new Map<string, ShotAlert>()
   const alertTimers = new Map<string, ReturnType<typeof setTimeout>>()
   const announcer = doc.createElement('div')
   announcer.className = 'player-bar-announcer'
@@ -348,7 +387,7 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
       if (!player) {
         return
       }
-      alerts.set(player.id, shot.result)
+      alerts.set(player.id, shot.ship ? { result: shot.result, ship: shot.ship } : { result: shot.result })
       clearTimeout(alertTimers.get(player.id))
       alertTimers.set(player.id, setTimeout(() => {
         alerts.delete(player.id)
@@ -357,7 +396,7 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
         schedule()
       }, SHOT_ALERT_MS))
       if (player.own) {
-        announcer.textContent = shot.result === 'hit' ? 'Your fleet was hit' : 'A shot missed your fleet'
+        announcer.textContent = ownShotAnnouncement(shot)
       }
     })
   }

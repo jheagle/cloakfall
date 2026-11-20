@@ -5,6 +5,7 @@
 import { useGameLifecycle, twoHumans, unhitShipCells, click, unhitWaterCells, settle, other, attacker, hitCells } from '../../tests/helpers/game'
 
 import { colours } from '../theme'
+import { redactBoard } from '../network/redactGameState'
 
 useGameLifecycle()
 
@@ -162,5 +163,57 @@ describe('ship and player health', () => {
     await click(unhitWaterCells(two)[0])
     expect([one.status, two.status]).toEqual([100, 100])
     two.shipFleet.forEach(ship => expect(ship.status).toBe(100))
+  })
+})
+
+describe('naming the ship you hit (CLOA-22)', () => {
+  // Take turns until player one has hit every part of player two's first ship; player two only shoots at water
+  const sinkFirstShip = async players => {
+    const [one, two] = players
+    const ship = two.shipFleet[0]
+    const hits = []
+    for (const part of ship.parts) {
+      if (attacker(players) !== one) {
+        await click(unhitWaterCells(one)[0])
+      }
+      await click(part)
+      hits.push(part)
+    }
+    return { ship, hits }
+  }
+
+  test('each hit names its ship and counts its hits so far, up to its size when it sinks', async () => {
+    const { players } = await twoHumans()
+    const { ship, hits } = await sinkFirstShip(players)
+    const size = String(ship.parts.length)
+    hits.forEach((cell, index) => {
+      expect(cell.attributes['data-ship']).toBe(ship.name)
+      expect(cell.attributes['data-ship-hits']).toBe(String(index + 1))
+      expect(cell.attributes['data-ship-size']).toBe(size)
+      // On the page too, where the player bar reads it (view/shotWatcher.ts)
+      expect(cell.element.dataset.ship).toBe(ship.name)
+    })
+    expect(ship.status).toBe(0)
+  })
+
+  test('a miss names no ship', async () => {
+    const { players: [, two] } = await twoHumans()
+    const cell = unhitWaterCells(two)[0]
+    await click(cell)
+    expect(cell.attributes['data-ship']).toBeUndefined()
+    expect(cell.element.dataset.ship).toBeUndefined()
+  })
+
+  test('the name is public only on hit cells: an online viewer of the board sees it there, and nowhere else', async () => {
+    const { players } = await twoHumans()
+    const [, two] = players
+    const cell = unhitShipCells(two)[0]
+    await click(cell)
+    const redacted = redactBoard(two.board, false)
+    const tiles = redacted.children.flatMap(layer => layer.children.flatMap(row => row.children))
+    const named = tiles.filter(tile => tile.attributes['data-ship'] !== undefined)
+    expect(named).toHaveLength(1)
+    expect(named[0].isHit).toBe(true)
+    expect(named[0].attributes['data-ship']).toBe(cell.attributes['data-ship'])
   })
 })

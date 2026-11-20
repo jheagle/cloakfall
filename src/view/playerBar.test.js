@@ -375,14 +375,42 @@ describe('installPlayerBar', () => {
   })
 
   describe('shots as they land', () => {
-    const shoot = (main, board, result) => {
+    const shoot = (main, board, result, ship) => {
       const matrix = main.querySelectorAll('.boards > .player')[board].querySelector('.matrix')
       const cell = document.createElement('div')
       cell.className = 'column'
       cell.dataset.shot = result
+      if (ship) {
+        // What attackFleet's nameHitShip puts on a hit cell
+        cell.dataset.ship = ship.name
+        cell.dataset.shipHits = String(ship.hits)
+        cell.dataset.shipSize = String(ship.size)
+      }
       matrix.append(cell)
       return cell
     }
+
+    test('a hit names the ship and its hits so far; the hit that sinks it says so (CLOA-22)', async () => {
+      const { main, nav } = await setUp([{ role: 'own', name: 'Ann', turn: 'attacker' }, { role: 'target', name: 'Bob' }])
+      const bob = () => nav.querySelectorAll('.player-bar-entry')[1].querySelector('.player-bar-alert').textContent
+      shoot(main, 1, 'hit', { name: 'Cruiser', hits: 1, size: 3 })
+      await nextFrame()
+      expect(bob()).toBe('Hit: Cruiser 1/3')
+      shoot(main, 1, 'hit', { name: 'Cruiser', hits: 3, size: 3 })
+      await nextFrame()
+      expect(bob()).toBe('Sunk: Cruiser')
+    })
+
+    test('a hit on the viewer\'s own fleet is announced with the ship (CLOA-22)', async () => {
+      const { main, nav } = await setUp([{ role: 'own', name: 'Ann' }, { role: 'target', name: 'Bob', turn: 'attacker' }])
+      const announced = () => nav.querySelector('.player-bar-announcer').textContent
+      shoot(main, 0, 'hit', { name: 'Dreadnought', hits: 2, size: 4 })
+      await nextFrame()
+      expect(announced()).toBe('Your Dreadnought was hit, 2 of 4')
+      shoot(main, 0, 'hit', { name: 'Scout', hits: 2, size: 2 })
+      await nextFrame()
+      expect(announced()).toBe('Your Scout was sunk')
+    })
 
     test('the struck player\'s entry says "Hit" or "Miss" for a moment, then goes back', async () => {
       const { main, nav } = await setUp([{ role: 'own', name: 'Ann', turn: 'attacker' }, { role: 'target', name: 'Bob' }])

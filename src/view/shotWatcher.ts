@@ -8,11 +8,34 @@
  * animation alone.
  */
 
-/** A shot that has just landed: on which board (its index among .boards' children), and whether it hit a ship. */
+/** The ship a hit struck, as the hit cell names it (attack/attackFleet.ts's nameHitShip): hits so far, of its size. */
+export interface HitShip {
+  name: string
+  hits: number
+  size: number
+}
+
+/**
+ * A shot that has just landed: on which board (its index among .boards' children), whether it hit a ship, and for a
+ * hit, which ship.
+ */
 export interface NewShot {
   index: number
   result: 'hit' | 'miss'
   cell: HTMLElement
+  ship?: HitShip
+}
+
+/**
+ * The ship a hit cell names, or undefined (a miss, or a cell without the names).
+ * @param cell
+ */
+export const hitShipOf = (cell: HTMLElement): HitShip | undefined => {
+  const { ship, shipHits, shipSize } = cell.dataset
+  // Number('') is 0, so a missing count must not pass as one: a named hit has struck 1 to size parts
+  const hits = Number(shipHits)
+  const size = Number(shipSize)
+  return ship && Number.isInteger(hits) && Number.isInteger(size) && hits >= 1 && hits <= size ? { name: ship, hits, size } : undefined
 }
 
 /** What the bar uses: find the new shots, or start afresh (a new game). */
@@ -39,7 +62,9 @@ export const createShotWatcher = (): ShotWatcher => {
         }
         seen.add(cell)
         if (seeded) {
-          fresh.push({ index, result: cell.dataset.shot === 'hit' ? 'hit' : 'miss', cell })
+          const result = cell.dataset.shot === 'hit' ? 'hit' : 'miss'
+          const ship = result === 'hit' ? hitShipOf(cell) : undefined
+          fresh.push(ship ? { index, result, cell, ship } : { index, result, cell })
         }
       })
     })

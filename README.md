@@ -275,6 +275,9 @@ turns (nobody firing), when the banner keeps what it said.</p>
 <dt><a href="#createTurnBanner">createTurnBanner(doc)</a></dt>
 <dd><p>Build the banner (not yet in the page: the bar places it).</p>
 </dd>
+<dt><a href="#hitShipOf">hitShipOf(cell)</a></dt>
+<dd><p>The ship a hit cell names, or undefined (a miss, or a cell without the names).</p>
+</dd>
 <dt><a href="#createShotWatcher">createShotWatcher()</a></dt>
 <dd><p>Track the shot cells already seen. The first scan of a game only records what is there (a game shown part-way
 through, e.g. an online player arriving, must not flash every old shot at once); every later one returns what is new.</p>
@@ -324,6 +327,14 @@ player and then updated in place (updateEntry).</p>
 </dd>
 <dt><a href="#setAttribute">setAttribute()</a></dt>
 <dd><p>Set an attribute only when it differs (or remove it, for null).</p>
+</dd>
+<dt><a href="#shotAlertText">shotAlertText(alert)</a></dt>
+<dd><p>What a player&#39;s entry says for a shot that just landed on their board: &quot;Miss&quot;, or the ship a hit struck and its hits
+so far (&quot;Hit: Cruiser 1/3&quot;), &quot;Sunk: Cruiser&quot; for the hit that sinks it, or just &quot;Hit&quot; when the cell names no ship.</p>
+</dd>
+<dt><a href="#ownShotAnnouncement">ownShotAnnouncement(alert)</a></dt>
+<dd><p>What a screen reader hears when a shot lands on the viewer&#39;s own fleet (their board may be out of sight in its
+drawer): which ship was hit and how badly, or that it sank.</p>
 </dd>
 <dt><a href="#updateEntry">updateEntry(item, player, shown, ownOpen, alert)</a></dt>
 <dd><p>Bring an entry up to date, changing only what differs.</p>
@@ -1326,6 +1337,13 @@ but really always a Board. During the placement phase a click places a ship rath
 hot-seat&#39;s own handoff-based placement, or (for a remote game) simultaneous per-player placement/ordering;
 exactly one of the two is ever active for a given game, never both.</p>
 </dd>
+<dt><a href="#nameHitShip">nameHitShip(cell, ship)</a></dt>
+<dd><p>Name the ship a hit struck, on the hit cell itself: its name, and how many of its parts are hit so far out of its
+size (Cruiser, 1 of 3). The player bar shows it as the shot lands (view/shotWatcher.ts, view/playerBar.ts). Only a
+hit cell carries these, and a hit is public: ship names and sizes are public fleet knowledge (the online redaction
+sends them to everyone, network/redactGameState.ts), and a hit cell is sent as it is, so this never reveals where an
+unhit part is.</p>
+</dd>
 <dt><a href="#attackFleet">attackFleet(target)</a></dt>
 <dd><p>Perform attack on an enemy board / cell</p>
 </dd>
@@ -1701,6 +1719,17 @@ Build the banner (not yet in the page: the bar places it).
 | --- |
 | doc | 
 
+<a name="hitShipOf"></a>
+
+## hitShipOf(cell)
+The ship a hit cell names, or undefined (a miss, or a cell without the names).
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| cell | 
+
 <a name="createShotWatcher"></a>
 
 ## createShotWatcher()
@@ -1827,6 +1856,30 @@ player and then updated in place (updateEntry).
 Set an attribute only when it differs (or remove it, for null).
 
 **Kind**: global function  
+<a name="shotAlertText"></a>
+
+## shotAlertText(alert)
+What a player's entry says for a shot that just landed on their board: "Miss", or the ship a hit struck and its hits
+so far ("Hit: Cruiser 1/3"), "Sunk: Cruiser" for the hit that sinks it, or just "Hit" when the cell names no ship.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| alert | 
+
+<a name="ownShotAnnouncement"></a>
+
+## ownShotAnnouncement(alert)
+What a screen reader hears when a shot lands on the viewer's own fleet (their board may be out of sight in its
+drawer): which ship was hit and how badly, or that it sank.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| alert | 
+
 <a name="updateEntry"></a>
 
 ## updateEntry(item, player, shown, ownOpen, alert)
@@ -1840,7 +1893,7 @@ Bring an entry up to date, changing only what differs.
 | player |  |
 | shown |  |
 | ownOpen | whether the viewer's own board's drawer is open, or null where there is no drawer (wide screens) |
-| alert | a shot that just landed on this player's board, shown for a moment ("Hit" / "Miss"), or undefined |
+| alert | a shot that just landed on this player's board, shown for a moment (shotAlertText), or undefined |
 
 <a name="renderBar"></a>
 
@@ -4532,6 +4585,22 @@ exactly one of the two is ever active for a given game, never both.
 | --- |
 | e | 
 | target | 
+
+<a name="nameHitShip"></a>
+
+## nameHitShip(cell, ship)
+Name the ship a hit struck, on the hit cell itself: its name, and how many of its parts are hit so far out of its
+size (Cruiser, 1 of 3). The player bar shows it as the shot lands (view/shotWatcher.ts, view/playerBar.ts). Only a
+hit cell carries these, and a hit is public: ship names and sizes are public fleet knowledge (the online redaction
+sends them to everyone, network/redactGameState.ts), and a hit cell is sent as it is, so this never reveals where an
+unhit part is.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| cell | the cell just hit |
+| ship | the ship it belongs to |
 
 <a name="attackFleet"></a>
 
