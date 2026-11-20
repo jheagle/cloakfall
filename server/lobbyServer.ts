@@ -15,6 +15,8 @@ import type { ForwardedEvent } from 'treeloom/dist/events/types'
 import type { HintSetting } from '../src/setup/gameOptions'
 import type { RoomGame } from './gameplay'
 import type { LobbyLimits } from './limits'
+import { createUsageLog, minutesSince } from './usage'
+import type { UsageTotals } from './usage'
 
 /** The fewest players a game can start with - nobody to attack otherwise. */
 const MIN_PLAYERS_TO_START = 2
@@ -60,6 +62,13 @@ interface Room {
   lastStart?: { hints: HintSetting, robots: number }
   /** When anyone in the room last sent anything, or its game last pushed an update (Date.now()). */
   lastActivity: number
+  /** For the usage log (usage.ts): when the room opened, how many games it started, and the current game's start,
+   * robots and whether its end was already logged. */
+  createdAt: number
+  gamesPlayed: number
+  gameStartedAt?: number
+  gameRobots?: number
+  gameLogged?: boolean
 }
 
 /**
@@ -102,6 +111,8 @@ export interface LobbyStatus {
   rooms: number
   games: number
   players: number
+  /** Counts since the server started (usage.ts). */
+  totals: UsageTotals
 }
 
 /**
@@ -162,6 +173,8 @@ export interface LobbyOptions {
    * that says no origin at all (not a browser) is allowed either way: this stops other sites from using the lobby
    * from their pages, it isn't authentication. */
   origins?: string[]
+  /** Where the usage log's lines go (usage.ts); the server's own runner passes console.log. None: nothing written. */
+  usageLog?: (line: string) => void
 }
 
 /**
@@ -183,6 +196,7 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
   const rooms = new Map<string, Room>()
   const connectionsByAddress = new Map<string, number>()
   const failedLookups = createFailureCounter(limits.maxFailedLookups, limits.failedLookupWindowMs)
+  const usage = createUsageLog(options.usageLog)
   const httpServer: HttpServer = createServer(httpHandler(() => ({
     service: 'cloakfall-lobby',
     status: 'up',
@@ -191,7 +205,8 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
     uptimeSeconds: Math.floor((Date.now() - startedAt.getTime()) / 1000),
     rooms: rooms.size,
     games: [...rooms.values()].filter(room => room.game && !isRoomGameOver(room.game)).length,
-    players: io.engine.clientsCount
+    players: io.engine.clientsCount,
+    totals: usage.totals()
   })))
   const io: Server = new Server(httpServer, {
     maxHttpBufferSize: limits.maxMessageBytes,
@@ -209,6 +224,25 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
    * @param roomCode
    */
   /**
+   * Log a room's current game as stopped before its end (a restart, back to the lobby, the room closing), once.
+   * A finished game was already logged as finished.
+   * @param room
+   * @param reason
+   */
+  const logGameStopped = (room: Room, reason: 'restart' | 'lobby' | 'host-left' | 'idle'): void => {
+    if (!room.game || room.gameLogged || isRoomGameOver(room.game)) {
+      return
+    }
+    room.gameLogged = true
+    usage.record('game-stopped', {
+      reason,
+      humans: room.game.playerBySocket.size,
+      robots: room.gameRobots ?? 0,
+      minutes: minutesSince(room.gameStartedAt ?? Date.now(), Date.now())
+    })
+  }
+
+  /**
    * Start a game in a room (startGame, and a host's restart): its players become the human players, in join order,
    * and `robots` fill seats. Its pushes go to each player's own socket, and only while it is still the room's game:
    * a game that was stopped (closed room, host's restart or return to lobby) never pushes again, even if a step it had
@@ -217,8 +251,13 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
    * @param hints
    * @param robots
    */
-  const beginGame = (room: Room, hints: HintSetting, robots: number): void => {
+  const beginGame = (room: Room, hints: HintSetting, robots: number, restart: boolean = false): void => {
     room.lastStart = { hints, robots }
+    room.gameStartedAt = Date.now()
+    room.gameRobots = robots
+    room.gameLogged = false
+    room.gamesPlayed += 1
+    usage.record('game-started', { humans: room.players.size, robots, hints, restart })
     // room.broadcastGame does not exist yet at this exact line - startRoomGame's own placement timer will not
     // fire for a good two minutes, long after the next line assigns it, so the closure below still reads
     // the real function by the time it's ever actually called.
@@ -228,16 +267,27 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
       if (room.game !== game) {
         return
       }
+      if (!room.gameLogged && isRoomGameOver(game)) {
+        room.gameLogged = true
+        usage.record('game-finished', {
+          humans: game.playerBySocket.size,
+          robots: room.gameRobots ?? 0,
+          minutes: minutesSince(room.gameStartedAt ?? Date.now(), Date.now()),
+          turns: game.players.reduce((turns, player) => turns + (player.turnCnt || 0), 0)
+        })
+      }
       room.lastActivity = Date.now()
       io.to(socketId).emit('gameUpdate', forTransport(redactedBody))
     })
   }
 
-  const closeRoom = (roomCode: string): void => {
+  const closeRoom = (roomCode: string, reason: 'host-left' | 'idle'): void => {
     const room = rooms.get(roomCode)
     if (!room) {
       return
     }
+    logGameStopped(room, reason)
+    usage.record('room-closed', { reason, players: room.players.size, games: room.gamesPlayed, minutes: minutesSince(room.createdAt, Date.now()) })
     room.game?.stop()
     room.broadcastGame = undefined
     rooms.delete(roomCode)
@@ -249,7 +299,7 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
     const idleSince = Date.now() - limits.roomIdleMs
     rooms.forEach((room, roomCode) => {
       if (room.lastActivity < idleSince) {
-        closeRoom(roomCode)
+        closeRoom(roomCode, 'idle')
       }
     })
     failedLookups.sweep()
@@ -340,7 +390,8 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
         return
       }
       const roomCode = generateRoomCode(rooms)
-      rooms.set(roomCode, { roomName: roomName.name, hostId: socket.id, players: new Map([[socket.id, name.name]]), lastActivity: Date.now() })
+      rooms.set(roomCode, { roomName: roomName.name, hostId: socket.id, players: new Map([[socket.id, name.name]]), lastActivity: Date.now(), createdAt: Date.now(), gamesPlayed: 0 })
+      usage.record('room-created', {})
       currentRoom = roomCode
       socket.join(roomCode)
       ack(roomState(rooms, roomCode))
@@ -386,6 +437,7 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
         return
       }
       room.players.set(socket.id, name.name)
+      usage.record('room-joined', { players: room.players.size })
       currentRoom = roomCode
       socket.join(roomCode)
       const state = roomState(rooms, roomCode)
@@ -455,6 +507,7 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
         ack({ error: `Need at least ${MIN_PLAYERS_TO_START} players to start` })
         return
       }
+      logGameStopped(room, action)
       room.game.stop()
       room.game = undefined
       room.broadcastGame = undefined
@@ -462,7 +515,7 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
       if (action === 'restart') {
         const last = room.lastStart ?? { hints: 'optional' as HintSetting, robots: 0 }
         // Robots fill the seats the humans don't; fewer seats if someone joined since (never past MAX_PLAYERS)
-        beginGame(room, last.hints, Math.min(last.robots, MAX_PLAYERS - room.players.size))
+        beginGame(room, last.hints, Math.min(last.robots, MAX_PLAYERS - room.players.size), true)
       }
       ack({ ok: true })
     })
@@ -541,10 +594,11 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
       }
       const room = rooms.get(currentRoom) as Room
       if (socket.id === room.hostId) {
-        closeRoom(currentRoom)
+        closeRoom(currentRoom, 'host-left')
         return
       }
       room.players.delete(socket.id)
+      usage.record('player-left', { during: room.game && !isRoomGameOver(room.game) ? 'game' : 'waiting', players: room.players.size })
       io.to(currentRoom).emit('roomUpdate', roomState(rooms, currentRoom))
     })
   })
@@ -555,7 +609,7 @@ export const createLobbyServer = (options: LobbyOptions = {}): HttpServer => {
 if (process.argv[1] && process.argv[1].endsWith('lobbyServer.js')) {
   const port = process.env.PORT || 3002
   const settings = settingsFromEnv(process.env)
-  createLobbyServer(settings).listen(port, () => console.log(`cloakfall lobby server ${version} listening on port ${port}` +
+  createLobbyServer({ ...settings, usageLog: line => console.log(line) }).listen(port, () => console.log(`cloakfall lobby server ${version} listening on port ${port}` +
     (settings.origins.length ? `, for ${settings.origins.join(', ')}` : ', for any origin') +
     (settings.limits.trustProxy ? ', behind a proxy' : '')))
 }
