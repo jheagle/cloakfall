@@ -1,5 +1,7 @@
 # Cloakfall
 
+[![tests](https://github.com/jheagle/cloakfall/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/jheagle/cloakfall/actions/workflows/tests.yml)
+
 Every fleet is cloaked. Fire blind into the dark. The last fleet still hidden wins.
 
 Cloakfall is a hidden-fleet grid game in a dark sector of space: 2 to 4 fleets, any mix of players and robots, in a
