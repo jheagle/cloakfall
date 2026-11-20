@@ -2,6 +2,7 @@ import treeloom from 'treeloom'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { Player } from '../../types'
 import { htmlEscape } from 'si-funciona'
+import { creditLine } from './credits'
 
 const listener = (listenerFunc: string) => [{ listenerFunc, listenerArgs: {}, listenerOptions: false }]
 
@@ -55,7 +56,9 @@ const remoteFinalScore = (players: Player[] = []): DomItem => treeloom.createDom
           eventListeners: { click: listener('remoteLeaveListener') }
         }
       ]
-    }
+    },
+    // Who made the game (credits.ts)
+    creditLine('credit-final-online')
   ]
 })
 

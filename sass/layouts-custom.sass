@@ -86,6 +86,49 @@
     color: inherit
     text-decoration: underline
 
+// The main menu's About (credits.ts): one quiet line until opened
+.about
+  // A gutter on a phone, so the open panel doesn't touch the screen's edges
+  width: min(60rem, calc(100% - 2rem))
+  box-sizing: border-box
+  margin: .5rem auto 0
+  color: #9aa4bd
+  font-size: 1.3rem
+  text-align: left
+
+  summary
+    cursor: pointer
+    text-align: center
+    text-decoration: underline
+
+  // Open, it sits over the demo game behind the menu: a dark panel keeps it readable
+  &[open]
+    position: relative
+    z-index: 1
+    padding: .75rem 1.25rem 1rem
+    border: 1px solid #2a3350
+    border-radius: .75rem
+    background: rgba(7, 11, 22, .92)
+
+  p
+    margin: .75rem 0 0
+    line-height: 1.5
+
+  a
+    color: #c8d0e4
+    text-decoration: underline
+
+// Under the final scores: who made the game (credits.ts)
+.credit-line
+  margin: 2rem auto 0
+  color: #9aa4bd
+  font-size: 1.3rem
+  text-align: center
+
+  a
+    color: #c8d0e4
+    text-decoration: underline
+
 .presets
   display: grid
   grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr))
