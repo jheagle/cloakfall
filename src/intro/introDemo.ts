@@ -3,6 +3,7 @@ import shadeShips from '../cells/shadeShips'
 import { getSession } from '../setup/gameSession'
 import { setGameMode } from '../setup/gameOptions'
 import { startNewGame } from '../setup/startNewGame'
+import { ignoreGames } from '../track'
 import type { DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { ListenerFunction } from 'treeloom/dist/events/types'
 import type { Player } from '../types'
@@ -49,7 +50,10 @@ export const introLayer = (doc: Document): HTMLElement => {
 const demoGameRoot = (listeners: Record<string, ListenerFunction>, layer: HTMLElement): DomItemRoot => {
   const head = treeloom.createDomItem({ nodeName: 'head', attributes: {}, element: document.createElement('head'), children: [] })
   const body = treeloom.createDomItem({ nodeName: 'div', attributes: { className: 'intro-demo' }, element: layer, children: [] })
-  return treeloom.documentDomItem(listeners, treeloom.initRoot([head, body], listeners))
+  const root = treeloom.documentDomItem(listeners, treeloom.initRoot([head, body], listeners))
+  // Its games are scenery, not play: never counted (track.ts)
+  ignoreGames(root)
+  return root
 }
 
 /**

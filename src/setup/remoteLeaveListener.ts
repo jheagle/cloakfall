@@ -3,6 +3,7 @@ import { leaveRemoteGame } from '../network/remoteGame'
 import { disconnectLobbySocket } from '../network/lobbySocket'
 import startMenu from './startMenu'
 import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
+import { trackAbandon } from '../track'
 
 /**
  * The final-score screen's Leave button, for a remote game - any player can click it, same as Play Again
@@ -30,6 +31,7 @@ const remoteLeaveListener = (e: Event, target: DomItem): void => {
  * @param root
  */
 export const leaveOnlineGame = (root: DomItemRoot): void => {
+  trackAbandon(root, 'leave')
   leaveRemoteGame(root)
   disconnectLobbySocket()
   history.replaceState(null, '', location.pathname)

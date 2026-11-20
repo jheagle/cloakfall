@@ -5,6 +5,7 @@ import { TURN_DEADLINE_EVENT } from '../view/turnBanner'
 import type { DomItem, DomItemRoot } from 'treeloom/dist/domItem/types'
 import type { Point } from 'treeloom-matrix/dist/point/types'
 import type { Board } from '../types'
+import { trackGameEnd, trackGameStart } from '../track'
 
 /** A pushed body carries whichever deadline currently applies as a plain attribute - see remotePlacement.ts's
  * startRemotePlacement (placement) and server/gameplay.ts's startRoomGame (turns). At most one is ever actually
@@ -299,12 +300,22 @@ export const enterRemoteGame = (root: DomItemRoot, firstUpdate: RedactedBody): v
   const firstOver = isGameOver(firstUpdate)
   if (firstOver) {
     stopForwarding(root)
+  } else {
+    trackGameStart(root, 'online')
   }
+  let wasOver = firstOver
   // The lobby's own markup is still rendered: the first push always replaces it in full
   renderFresh(root, firstOver ? finalScoreOnly(firstUpdate) : firstUpdate)
   setCountdownDeadline(deadlineOf(firstUpdate))
   onGameUpdate(redactedBody => {
     const over = isGameOver(redactedBody as RedactedBody)
+    // Counted on the change only: a game reaching its final score, or Play Again starting the next one
+    if (over && !wasOver) {
+      trackGameEnd(root)
+    } else if (!over && wasOver) {
+      trackGameStart(root, 'online')
+    }
+    wasOver = over
     if (over) {
       stopForwarding(root)
     } else if (!root.forwardEvents) {
