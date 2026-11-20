@@ -110,6 +110,15 @@ contain a player's name or anything typed, and each one counts every time it hap
 | `cloakfall-link-whats-new`, `cloakfall-link-server-status` | a menu link opened (any link with `data-track`) |
 | `cloakfall-error`, `cloakfall-error-promise` | an uncaught error (titled with file and line, at most 5 per page) |
 
+### The lobby's usage log
+
+The lobby server writes one JSON line per online event to its output (`server/usage.ts`), next to its start-up line:
+rooms created and joined, games started (humans, robots, hints, whether it was a restart), finished (minutes, turns)
+or stopped early (restart, back to the lobby, the host leaving, idle), players leaving, and rooms closing. Never a
+name, a room code or a network address. In Docker they're in the container's log, e.g.
+`docker logs <container> | grep '"usage"'`; a recreated container starts a new log. `GET /status` also has `totals`
+since the server started (rooms created, games started / finished / stopped, players who left mid-game).
+
 ## Checking full games in a browser
 
 Three scripts play a whole game in a real headless Chromium (Playwright) against the built page, and fail when the game

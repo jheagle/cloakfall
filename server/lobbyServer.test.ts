@@ -975,3 +975,91 @@ describe('limits (hardening H3/H4/H5)', () => {
     })
   })
 })
+
+describe('the usage log (usage.ts): anonymous lines per event, and totals on /status', () => {
+  const wait = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
+  let lines: Array<Record<string, unknown>>
+
+  beforeEach(async () => {
+    lines = []
+    await restartWith({ usageLog: line => lines.push(JSON.parse(line)) })
+  })
+
+  afterEach(() => jest.restoreAllMocks())
+
+  const usages = () => lines.map(({ time, ...rest }) => rest)
+
+  test('rooms, joins, games started, restarted and stopped, players leaving, the room closing: no names or codes', async () => {
+    const host = connect()
+    const { roomCode } = await emit<RoomState>(host, 'createRoom', { name: 'Alice', roomName: 'Secret lobby' })
+    await emit(connect(), 'joinRoom', { roomCode, name: 'Bob' })
+    const leaver = connect()
+    await emit(leaver, 'joinRoom', { roomCode, name: 'Cyd' })
+    expect(await emit(host, 'startGame', { hints: 'on', robots: 1 })).toEqual({ started: true })
+    expect(await emit(host, 'hostGameAction', { action: 'restart' })).toEqual({ ok: true })
+    leaver.close()
+    await wait(150)
+    expect(await emit(host, 'hostGameAction', { action: 'lobby' })).toEqual({ ok: true })
+    const status = await (await fetch(`${baseUrl}/status`)).json()
+    host.close()
+    await wait(150)
+
+    expect(usages()).toEqual([
+      { usage: 'room-created' },
+      { usage: 'room-joined', players: 2 },
+      { usage: 'room-joined', players: 3 },
+      { usage: 'game-started', humans: 3, robots: 1, hints: 'on', restart: false },
+      { usage: 'game-stopped', reason: 'restart', humans: 3, robots: 1, minutes: 0 },
+      { usage: 'game-started', humans: 3, robots: 1, hints: 'on', restart: true },
+      { usage: 'player-left', during: 'game', players: 2 },
+      { usage: 'game-stopped', reason: 'lobby', humans: 3, robots: 1, minutes: 0 },
+      { usage: 'room-closed', reason: 'host-left', players: 2, games: 2, minutes: 0 }
+    ])
+    expect(lines.every(line => !Number.isNaN(Date.parse(line.time as string)))).toBe(true)
+    expect(JSON.stringify(lines)).not.toMatch(new RegExp(`Alice|Bob|Cyd|Secret|${roomCode}`))
+    expect(status.totals).toEqual({ roomsCreated: 1, gamesStarted: 2, gamesFinished: 0, gamesStopped: 2, playersLeftMidGame: 1 })
+  })
+
+  test('a game reaching its final score is logged once as finished (with its turns), not as stopped when the room closes', async () => {
+    const games: RoomGame[] = []
+    const broadcasts: Array<() => void> = []
+    const realStart = gameplay.startRoomGame
+    const realWatch = gameplay.watchRoomGame
+    jest.spyOn(gameplay, 'startRoomGame').mockImplementation((...args) => {
+      const game = realStart(...args)
+      games.push(game)
+      return game
+    })
+    jest.spyOn(gameplay, 'watchRoomGame').mockImplementation((...args) => {
+      const broadcast = realWatch(...args)
+      broadcasts.push(broadcast)
+      return broadcast
+    })
+    const host = connect()
+    const { roomCode } = await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Game' })
+    await emit(connect(), 'joinRoom', { roomCode, name: 'Bo' })
+    await emit(host, 'startGame', { hints: 'off' })
+    // Everyone but the first player sunk, as the last shot of a real game leaves it
+    games[0].players.forEach((player, index) => {
+      player.turnCnt = 7
+      if (index > 0) player.status = 0
+    })
+    broadcasts[0]()
+    broadcasts[0]()
+    host.close()
+    await wait(150)
+
+    expect(usages().filter(line => String(line.usage).startsWith('game-'))).toEqual([
+      { usage: 'game-started', humans: 2, robots: 0, hints: 'off', restart: false },
+      { usage: 'game-finished', humans: 2, robots: 0, minutes: 0, turns: 14 }
+    ])
+  })
+
+  test('without a writer nothing is written, and /status still counts', async () => {
+    await restartWith({})
+    const host = connect()
+    await emit<RoomState>(host, 'createRoom', { name: 'Ann', roomName: 'Game' })
+    expect((await (await fetch(`${baseUrl}/status`)).json()).totals.roomsCreated).toBe(1)
+    expect(lines).toEqual([])
+  })
+})
