@@ -495,7 +495,7 @@ describe('the lobby server', () => {
       // Set order (not Random) on purpose - it transitions synchronously with no queued animation steps of its
       // own, so nothing is left running past this test's end to interfere with whichever test runs next.
       const setOrderIndex = orderingPanel.children.findIndex((child: any) => child.attributes?.className === 'remote-order-set')
-      expect(orderingPanel.children.find((child: any) => child.attributes?.className === 'remote-ordering-message').attributes.innerHTML).toMatch(/choose how/i)
+      expect(orderingPanel.children.find((child: any) => child.attributes?.className === 'remote-ordering-message').attributes.innerHTML).toMatch(/all players are ready\. choose who goes first/i)
 
       // A non-host's attempt is silently ignored - nothing gets pushed as a result of it at all.
       const sawUpdateFromJoiner = new Promise<string>(resolve => host.once('gameUpdate', () => resolve('update')))

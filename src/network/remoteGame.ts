@@ -12,11 +12,11 @@ import type { Board } from '../types'
  * strings once their own phase ends, rather than being removed outright (see finishOrdering and onGameOver). */
 interface RedactedBody {
   attributes?: { 'data-placement-deadline'?: string, 'data-turn-deadline'?: string }
-  children: Array<{ attributes?: { className?: string } }>
+  children: Array<{ attributes?: { className?: string, style?: { display?: string } } }>
 }
 
 /** Which phase a deadline belongs to - decides the countdown's own label (see renderCountdown). */
-type DeadlineKind = 'placement' | 'turn'
+type DeadlineKind = 'placement' | 'ordering' | 'turn'
 
 /** Remove every one of a parent's children - the same pattern startNewGame's clearBody uses locally. */
 const clearChildren = (parent: DomItem): void => {
@@ -28,10 +28,13 @@ const clearChildren = (parent: DomItem): void => {
 /** Whichever deadline a pushed body actually carries right now, placement or turn - an empty string (the
  * lingering, no-longer-relevant state left behind once that phase ends) is falsy, same as it being absent
  * altogether, so both read the same way here. */
-const deadlineOf = (redactedBody: RedactedBody): { kind: DeadlineKind, deadline: number } | null => {
+export const deadlineOf = (redactedBody: RedactedBody): { kind: DeadlineKind, deadline: number } | null => {
   const placement = redactedBody.attributes?.['data-placement-deadline']
   if (placement) {
-    return { kind: 'placement', deadline: Number(placement) }
+    // The same deadline runs on after everyone has placed, while the host chooses the order: say so, not "Placing ships"
+    const ordering = redactedBody.children.find(child => child.attributes?.className === 'remote-ordering')
+    const choosingOrder = ordering !== undefined && ordering.attributes?.style?.display !== 'none'
+    return { kind: choosingOrder ? 'ordering' : 'placement', deadline: Number(placement) }
   }
   const turn = redactedBody.attributes?.['data-turn-deadline']
   if (turn) {
@@ -68,6 +71,7 @@ let countdownKind: DeadlineKind | null = null
 
 const COUNTDOWN_LABEL: Record<DeadlineKind, string> = {
   placement: 'Placing ships',
+  ordering: 'Choosing the order',
   turn: 'Turn'
 }
 
@@ -125,12 +129,12 @@ const tellTurnDeadline = (deadline: number | null): void => {
 
 /**
  * Show each new deadline (or its absence) as a push brings it: a turn's in the turn banner, beside whose turn it is;
- * placing ships' in the corner countdown (the banner is only there during play).
+ * placing ships' and choosing the order's in the corner countdown (the banner is only there during play).
  * @param info
  */
 const setCountdownDeadline = (info: { kind: DeadlineKind, deadline: number } | null): void => {
   tellTurnDeadline(info?.kind === 'turn' ? info.deadline : null)
-  showCornerCountdown(info?.kind === 'placement' ? info : null)
+  showCornerCountdown(info !== null && info.kind !== 'turn' ? info : null)
 }
 
 /** Remove the countdown entirely - called once the remote game is left. */
