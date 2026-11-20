@@ -7,6 +7,21 @@ import updateScore from './updateScore'
 import type { Player, Ship, Tile } from '../types'
 
 /**
+ * Name the ship a hit struck, on the hit cell itself: its name, and how many of its parts are hit so far out of its
+ * size (Cruiser, 1 of 3). The player bar shows it as the shot lands (view/shotWatcher.ts, view/playerBar.ts). Only a
+ * hit cell carries these, and a hit is public: ship names and sizes are public fleet knowledge (the online redaction
+ * sends them to everyone, network/redactGameState.ts), and a hit cell is sent as it is, so this never reveals where an
+ * unhit part is.
+ * @param cell the cell just hit
+ * @param ship the ship it belongs to
+ */
+export const nameHitShip = (cell: Tile, ship: Ship): void => {
+  cell.attributes['data-ship'] = ship.name
+  cell.attributes['data-ship-hits'] = String(ship.parts.filter(part => part.isHit).length)
+  cell.attributes['data-ship-size'] = String(ship.parts.length)
+}
+
+/**
  * Perform attack on an enemy board / cell
  * @param target
  */
@@ -46,6 +61,7 @@ const attackFleet = (target: Tile): Player[] => {
     // TS cannot track the reassignment inside the map() callback above, hitShip is really a Ship here
     const theHitShip = hitShip as unknown as Ship
     player = updatePlayerStats(player, `${Math.round(player.status * 100) / 100}%`)
+    nameHitShip(hitCell, theHitShip)
     // Check if the hit ship was sunk
     sunkShip = theHitShip.status <= 0 ? theHitShip.parts.length : 0
   }
