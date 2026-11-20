@@ -1,7 +1,7 @@
 import treeloom from 'treeloom'
 import labelTile from '../cells/labelTile'
 import treeloomMatrix from 'treeloom-matrix'
-import siFunciona from 'si-funciona'
+import siFunciona, { htmlEscape } from 'si-funciona'
 import { defaultShipSpecs } from './defaultFleet'
 import generateRandomFleet from './generateRandomFleet'
 import queueTimeout from '../queue'
@@ -128,16 +128,28 @@ const showStart = (player: Player, point: Point | null, size: number): void => {
   })
 }
 
-const updateOrderingPanel = (session: RemotePlacementState, root: DomItemRoot): void => {
-  const panel = child(root.body, 'remote-ordering')
+/**
+ * What the ordering panel says at each stage (the host's view; everyone else's is redactGameState's guestOrderingPanel).
+ * HTML: names are escaped.
+ * @param stage
+ * @param order the players in the order set so far
+ */
+export const orderingMessage = (stage: RemoteStage, order: Player[]): string => {
   const messages: Record<RemoteStage, string> = {
     placing: '',
-    choosing: 'Choose how to decide the order: Random, or tap each player\'s name in turn.',
+    // The same words as a local game (placement.ts), so online reads like the game people already know
+    choosing: 'All players are ready. Choose who goes first: Random, or set the order by tapping each player\'s name in turn.',
     ordering: 'Tap each player\'s name in turn. The first one tapped goes first.',
     shuffling: 'Choosing at random...',
-    chosen: `${session.order.map(p => p.name).join(', then ')} will take turns, in that order.`
+    // Escaped: a name is whatever a player typed, and this is HTML on every player's screen
+    chosen: `${order.map(p => htmlEscape(p.name)).join(', then ')} will take turns, in that order.`
   }
-  update(child(panel, 'remote-ordering-message'), { innerHTML: messages[session.stage] })
+  return messages[stage]
+}
+
+const updateOrderingPanel = (session: RemotePlacementState, root: DomItemRoot): void => {
+  const panel = child(root.body, 'remote-ordering')
+  update(child(panel, 'remote-ordering-message'), { innerHTML: orderingMessage(session.stage, session.order) })
   update(panel, { style: { display: session.stage === 'placing' ? 'none' : '' } })
 }
 

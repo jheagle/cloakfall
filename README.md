@@ -467,6 +467,10 @@ served - every other player&#39;s board/fleet/placement panel never need to reac
 <dt><a href="#showStart">showStart()</a></dt>
 <dd><p>Mark which cells a ship-in-progress could end on, same visual as local placement&#39;s own showStart.</p>
 </dd>
+<dt><a href="#orderingMessage">orderingMessage(stage, order)</a></dt>
+<dd><p>What the ordering panel says at each stage (the host&#39;s view; everyone else&#39;s is redactGameState&#39;s guestOrderingPanel).
+HTML: names are escaped.</p>
+</dd>
 <dt><a href="#startRemotePlacement">startRemotePlacement(players, body, done, onTimerChange)</a></dt>
 <dd><p>Begin a remote game&#39;s placement phase: every human places their own ships on their own board at the same
 time - no handoff, no &quot;look away&quot;. <code>done</code> runs once the order is set, with the order play will take.
@@ -896,7 +900,7 @@ one from the document while this module&#39;s own reference to it lives on.</p>
 </dd>
 <dt><a href="#setCountdownDeadline">setCountdownDeadline(info)</a></dt>
 <dd><p>Show each new deadline (or its absence) as a push brings it: a turn&#39;s in the turn banner, beside whose turn it is;
-placing ships&#39; in the corner countdown (the banner is only there during play).</p>
+placing ships&#39; and choosing the order&#39;s in the corner countdown (the banner is only there during play).</p>
 </dd>
 <dt><a href="#stopCountdown">stopCountdown()</a></dt>
 <dd><p>Remove the countdown entirely - called once the remote game is left.</p>
@@ -988,6 +992,12 @@ sizes are public fleet knowledge, only position is hidden) disabled - used for a
 panel that is not this viewer&#39;s own to interact with. Builds a new object rather than mutating the given one,
 since it is already part of an outer clone (redactPlayer/redactGameBody) that must stay independent of the
 real tree.</p>
+</dd>
+<dt><a href="#guestOrderingPanel">guestOrderingPanel(panel, hostName, stage)</a></dt>
+<dd><p>The ordering panel as everyone but the host sees it: no buttons (only the host decides the order, and a disabled
+button that never works looks like something you have to do), and a message that says who is choosing, so a guest
+who has pressed Ready knows everyone is ready and the next move is the host&#39;s. Once the order is being drawn or is
+set, everyone sees the same message.</p>
 </dd>
 <dt><a href="#hidePlayerControls">hidePlayerControls(stats)</a></dt>
 <dd><p>A clone of a player&#39;s own stats panel with its player-controls entirely removed - used for anyone else&#39;s
@@ -2313,6 +2323,19 @@ Refresh one player's own placement panel to match their current state.
 Mark which cells a ship-in-progress could end on, same visual as local placement's own showStart.
 
 **Kind**: global function  
+<a name="orderingMessage"></a>
+
+## orderingMessage(stage, order)
+What the ordering panel says at each stage (the host's view; everyone else's is redactGameState's guestOrderingPanel).
+HTML: names are escaped.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| stage |  |
+| order | the players in the order set so far |
+
 <a name="startRemotePlacement"></a>
 
 ## startRemotePlacement(players, body, done, onTimerChange)
@@ -3503,7 +3526,7 @@ Tell the turn banner (view/turnBanner.ts) when the current turn runs out, or tha
 
 ## setCountdownDeadline(info)
 Show each new deadline (or its absence) as a push brings it: a turn's in the turn banner, beside whose turn it is;
-placing ships' in the corner countdown (the banner is only there during play).
+placing ships' and choosing the order's in the corner countdown (the banner is only there during play).
 
 **Kind**: global function  
 
@@ -3704,6 +3727,22 @@ real tree.
 | Param |
 | --- |
 | panel | 
+
+<a name="guestOrderingPanel"></a>
+
+## guestOrderingPanel(panel, hostName, stage)
+The ordering panel as everyone but the host sees it: no buttons (only the host decides the order, and a disabled
+button that never works looks like something you have to do), and a message that says who is choosing, so a guest
+who has pressed Ready knows everyone is ready and the next move is the host's. Once the order is being drawn or is
+set, everyone sees the same message.
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| panel | the ordering panel's clone |
+| hostName |  |
+| stage |  |
 
 <a name="hidePlayerControls"></a>
 

@@ -488,6 +488,9 @@ describe('the lobby server', () => {
       }
 
       await readyUp(host, 0)
+      // The joiner's own pushes too: what a guest sees once everyone is ready (CLOA-29)
+      const joinerViews: any[] = []
+      joiner.on('gameUpdate', (view: any) => joinerViews.push(view))
       const choosingView = await readyUp(joiner, 1)
 
       const orderingIndex = choosingView.children.findIndex((child: any) => child.attributes?.className === 'remote-ordering')
@@ -495,7 +498,20 @@ describe('the lobby server', () => {
       // Set order (not Random) on purpose - it transitions synchronously with no queued animation steps of its
       // own, so nothing is left running past this test's end to interfere with whichever test runs next.
       const setOrderIndex = orderingPanel.children.findIndex((child: any) => child.attributes?.className === 'remote-order-set')
-      expect(orderingPanel.children.find((child: any) => child.attributes?.className === 'remote-ordering-message').attributes.innerHTML).toMatch(/choose how/i)
+      expect(orderingPanel.children.find((child: any) => child.attributes?.className === 'remote-ordering-message').attributes.innerHTML).toMatch(/all players are ready\. choose who goes first/i)
+
+      // The guest's copy (redactGameBody -> guestOrderingPanel): told who is choosing, and no buttons of their own
+      const guestPanelOf = (view: any): any => view.children.find((child: any) => child.attributes?.className === 'remote-ordering')
+      const shown = (view: any): boolean => guestPanelOf(view) !== undefined && guestPanelOf(view).attributes?.style?.display !== 'none'
+      for (let wait = 0; wait < 40 && !joinerViews.some(shown); wait++) {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      }
+      const guestPanel = guestPanelOf(joinerViews.filter(shown).at(-1))
+      expect(guestPanel.children.find((child: any) => child.attributes?.className === 'remote-ordering-message').attributes.innerHTML).toMatch(/all players are ready\. .+ is choosing who goes first/i)
+      guestPanel.children.filter((child: any) => child.nodeName === 'button').forEach((button: any) => {
+        expect(button.attributes.disabled).toBe(true)
+        expect(button.attributes.style.display).toBe('none')
+      })
 
       // A non-host's attempt is silently ignored - nothing gets pushed as a result of it at all.
       const sawUpdateFromJoiner = new Promise<string>(resolve => host.once('gameUpdate', () => resolve('update')))

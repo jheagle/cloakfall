@@ -1,9 +1,10 @@
 import treeloomMatrix from 'treeloom-matrix'
-import siFunciona from 'si-funciona'
+import siFunciona, { htmlEscape } from 'si-funciona'
 import checkIfHitCell from '../utils/checkIfHitCell'
 import labelTile from '../cells/labelTile'
 import { roleFor } from '../attack/playerView'
 import { remotePlacementStage } from '../setup/remotePlacement'
+import type { RemoteStage } from '../setup/remotePlacement'
 import { PLAYER_CONTROLS_CLASS } from '../components/pieces/playerStats'
 import type { DomItem } from 'treeloom/dist/domItem/types'
 import type { Board, Player, Ship, Tile } from '../types'
@@ -89,6 +90,35 @@ const disableControls = (panel: DomItem): DomItem => ({
     ? child
     : { ...child, attributes: { ...child.attributes, disabled: true } } as DomItem)
 }) as DomItem
+
+/**
+ * The ordering panel as everyone but the host sees it: no buttons (only the host decides the order, and a disabled
+ * button that never works looks like something you have to do), and a message that says who is choosing, so a guest
+ * who has pressed Ready knows everyone is ready and the next move is the host's. Once the order is being drawn or is
+ * set, everyone sees the same message.
+ * @param panel the ordering panel's clone
+ * @param hostName
+ * @param stage
+ */
+export const guestOrderingPanel = (panel: DomItem, hostName: string, stage: RemoteStage | null): DomItem => {
+  // Escaped: a name is whatever a player typed, and the message is HTML
+  const host = htmlEscape(hostName)
+  const waiting: Partial<Record<RemoteStage, string>> = {
+    choosing: `All players are ready. ${host} is choosing who goes first.`,
+    ordering: `All players are ready. ${host} is setting the order.`
+  }
+  const disabled = disableControls(panel)
+  return {
+    ...disabled,
+    children: disabled.children.map(child => {
+      if (classNameOf(child)?.endsWith('-message')) {
+        const text = stage === null ? undefined : waiting[stage]
+        return text === undefined ? child : { ...child, attributes: { ...child.attributes, innerHTML: text } } as DomItem
+      }
+      return { ...child, attributes: { ...child.attributes, style: { ...(child.attributes as { style?: object }).style, display: 'none' } } } as DomItem
+    })
+  } as DomItem
+}
 
 /**
  * A clone of a player's own stats panel with its player-controls entirely removed - used for anyone else's
@@ -229,7 +259,7 @@ export const redactGameBody = (body: DomItem, players: Player[], viewer: Player)
   }
   const orderingIndex = clone.children.findIndex(child => classNameOf(child) === 'remote-ordering')
   if (orderingIndex !== -1 && viewer !== players[0]) {
-    clone.children[orderingIndex] = disableControls(clone.children[orderingIndex])
+    clone.children[orderingIndex] = guestOrderingPanel(clone.children[orderingIndex], players[0].name, remotePlacementStage(body))
   }
   return clone
 }

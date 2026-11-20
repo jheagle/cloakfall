@@ -6,7 +6,10 @@ import { colours } from '../theme'
 import treeloom from 'treeloom'
 import treeloomMatrix from 'treeloom-matrix'
 import { useGameLifecycle, startGame, settle } from '../../tests/helpers/game'
-import { redactBoard, redactGameBody, redactGameState, redactPlayer } from './redactGameState'
+import { guestOrderingPanel, redactBoard, redactGameBody, redactGameState, redactPlayer } from './redactGameState'
+import remoteOrderingPanel from '../components/layout/remoteOrderingPanel'
+import { orderingMessage } from '../setup/remotePlacement'
+import { deadlineOf } from './remoteGame'
 import remoteFinalScore from '../components/layout/remoteFinalScore'
 
 useGameLifecycle()
@@ -237,5 +240,53 @@ describe('redacting the game state for a remote viewer', () => {
       const nonHostLeave = findByClass(redactGameBody(body, players, players[1]), 'remote-leave')
       expect(nonHostLeave.attributes.disabled).toBeFalsy()
     })
+  })
+})
+
+describe('the turn order, as a guest sees it online (CLOA-29)', () => {
+  const panelWith = message => {
+    const panel = remoteOrderingPanel()
+    panel.children[0].attributes.innerHTML = message
+    return panel
+  }
+  const messageOf = panel => panel.children.find(child => child.attributes.className === 'remote-ordering-message').attributes.innerHTML
+  const buttonsOf = panel => panel.children.filter(child => child.nodeName === 'button')
+
+  test('while the host chooses, a guest is told everyone is ready and who is choosing, with no buttons of their own', () => {
+    const guest = guestOrderingPanel(panelWith(orderingMessage('choosing', [])), 'Josh', 'choosing')
+    expect(messageOf(guest)).toBe('All players are ready. Josh is choosing who goes first.')
+    buttonsOf(guest).forEach(button => {
+      expect(button.attributes.disabled).toBe(true)
+      expect(button.attributes.style.display).toBe('none')
+    })
+    expect(messageOf(guestOrderingPanel(panelWith(orderingMessage('ordering', [])), 'Josh', 'ordering'))).toBe('All players are ready. Josh is setting the order.')
+  })
+
+  test('once the order is drawn or set, a guest sees the same message as the host', () => {
+    const order = [{ name: 'Josh' }, { name: 'Ann' }]
+    const chosen = orderingMessage('chosen', order)
+    expect(chosen).toBe('Josh, then Ann will take turns, in that order.')
+    expect(messageOf(guestOrderingPanel(panelWith(chosen), 'Josh', 'chosen'))).toBe(chosen)
+  })
+
+  test('the host sees the same words as a local game', () => {
+    expect(orderingMessage('choosing', [])).toBe('All players are ready. Choose who goes first: Random, or set the order by tapping each player\'s name in turn.')
+  })
+
+  test('names are escaped: a name is whatever a player typed, and these messages are HTML on every screen', () => {
+    const name = '<img src=x onerror=alert(1)>'
+    expect(orderingMessage('chosen', [{ name }, { name: 'Ann' }])).not.toContain('<img')
+    expect(messageOf(guestOrderingPanel(panelWith(''), name, 'choosing'))).not.toContain('<img')
+    expect(messageOf(guestOrderingPanel(panelWith(''), name, 'choosing'))).toContain('&lt;img')
+  })
+
+  test('the countdown says what its deadline is for: placing ships, then choosing the order', () => {
+    const body = display => ({
+      attributes: { 'data-placement-deadline': '1000' },
+      children: [{ attributes: { className: 'remote-ordering', style: { display } } }]
+    })
+    expect(deadlineOf(body('none'))).toEqual({ kind: 'placement', deadline: 1000 })
+    expect(deadlineOf(body(''))).toEqual({ kind: 'ordering', deadline: 1000 })
+    expect(deadlineOf({ attributes: { 'data-turn-deadline': '5' }, children: [] })).toEqual({ kind: 'turn', deadline: 5 })
   })
 })

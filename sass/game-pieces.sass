@@ -35,7 +35,9 @@
     .row .column
         transition: all 250ms cubic-bezier(.19,1,.22,1) 50ms
 
-.placement
+// The panel between turns: a local game's, and online, its two (CLOA-29): the ready-up under each player's own board,
+// and the host's choice of who goes first. One look for all of them, so online reads like the game people know
+.placement, .remote-ordering, .remote-placement-panel
   position: sticky
   top: 0
   z-index: 10
@@ -77,6 +79,10 @@
       color: #888
       background-color: #555
       cursor: not-allowed
+
+// The online ready-up sits under the player's own board, in the flow of the page, not stuck to the top
+.remote-placement-panel
+  position: static
 
 .column.valid-target
   cursor: crosshair
