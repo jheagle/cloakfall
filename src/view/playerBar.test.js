@@ -151,9 +151,24 @@ describe('readPlayers', () => {
 })
 
 describe('installPlayerBar', () => {
+  // Frames asked for and not yet run: nextFrame waits for all of them, including a frame that a refresh's own DOM
+  // changes ask for (the MutationObserver schedules again)
+  const pendingFrames = new Set()
   beforeEach(() => {
+    pendingFrames.clear()
     // A frame later, as in a browser (never synchronously: the bar sets its pending frame from the return value)
-    jest.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => setTimeout(() => callback(performance.now()), 0))
+    jest.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      const id = setTimeout(() => {
+        pendingFrames.delete(id)
+        callback(performance.now())
+      }, 0)
+      pendingFrames.add(id)
+      return id
+    })
+    jest.spyOn(window, 'cancelAnimationFrame').mockImplementation(id => {
+      clearTimeout(id)
+      pendingFrames.delete(id)
+    })
   })
   afterEach(() => {
     jest.restoreAllMocks()
@@ -165,8 +180,17 @@ describe('installPlayerBar', () => {
 
   let removeBar = null
 
-  /** Let the scheduled refresh run. */
-  const nextFrame = () => new Promise(resolve => setTimeout(resolve, 5))
+  /**
+   * Let the scheduled refresh run, and any frame it leads to. A single fixed wait was flaky under load (CLOA-26): a
+   * refresh that changes the page schedules another frame, and when the machine stalled, the wait ran out before it.
+   */
+  const nextFrame = async () => {
+    const tick = () => new Promise(resolve => setTimeout(resolve, 5))
+    await tick()
+    for (let rounds = 0; pendingFrames.size > 0 && rounds < 100; rounds++) {
+      await tick()
+    }
+  }
 
   const setUp = async players => {
     const main = document.createElement('main')
