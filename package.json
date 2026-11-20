@@ -1,6 +1,6 @@
 {
   "name": "cloakfall",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Cloakfall: a free-for-all, hidden-fleet grid game for 2 to 4 players and robots, in a dark sector of space. Built on treeloom and treeloom-matrix.",
   "main": "dist/main.js",
   "author": "Joshua Heagle",
