@@ -62,6 +62,34 @@ docker run --rm -p 3002:3002 cloakfall-lobby
 curl http://localhost:3002/status
 ```
 
+## Releasing to joshuaheagle.com
+
+A release has two halves that go live separately: the game page on the website (GitHub Pages) and the lobby server on
+the VPS. Do both, or online games run one version's page against another version's server.
+
+After `npx release-it --no-increment` on `main`:
+
+1. **Website copy.** The website checkout must sit next to this repo (`../joshuaheagle.local`). `npm run build` doesn't
+   copy, so:
+   ```
+   npm run build && npx gulp copyFiles && npm run docs
+   cd ../joshuaheagle.local && npm run build:fingerprint && npm test
+   ```
+   Open a website PR with `projects/cloakfall/` (bundle, CSS, `play.html` fingerprints, docs). Once it's merged, check
+   `play.html` loads the new `cloakfall.js?v=...` and the bundle's `exports.version` is the new version.
+2. **Lobby server** (`cloakfall.joshuaheagle.com`: a VPS running this repo's `Dockerfile` behind a reverse proxy). On
+   the server's checkout, pull, rebuild the image and restart the container (see
+   [Running the lobby in Docker](#running-the-lobby-in-docker)):
+   ```
+   git pull && docker build -t cloakfall-lobby . && docker compose up -d
+   ```
+   Check `https://cloakfall.joshuaheagle.com/status` reports the new version. (The maintainer's host details are kept
+   privately.)
+
+The lobby needs redeploying for every release, even one with no server changes: `/status` reports the version, and the
+server holds shared game code too. 2026-11-19: the lobby was still on 2.1.0 after 2.1.1 shipped, so online games missed
+2.1.1's turn-order names.
+
 ## Play events (GoatCounter)
 
 The website's copy of the game counts anonymous play events with [GoatCounter](https://www.goatcounter.com/help/events)
