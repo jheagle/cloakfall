@@ -83,6 +83,12 @@
 // The online ready-up sits under the player's own board, in the flow of the page, not stuck to the top
 .remote-placement-panel
   position: static
+  // As wide as the board above it, never wider (CLOA-36): width 0 keeps its one-line message out of the board's
+  // width (.player doesn't shrink, so a long message made it ~890px on a phone and the page zoomed out), and
+  // min-width 100% fills the board's width, so the message and the buttons wrap there
+  box-sizing: border-box
+  width: 0
+  min-width: 100%
 
 .column.valid-target
   cursor: crosshair
