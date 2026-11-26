@@ -222,6 +222,27 @@ describe('installPlayerBar', () => {
     expect(style.textContent).toContain(':nth-child(2)')
   })
 
+  test('first turn (CLOA-24): the hints open in the bar, the boards to fire at are marked, and the menu reopens the hints', async () => {
+    localStorage.clear()
+    const { nav } = await setUp([
+      { role: 'own', name: 'Ann', turn: 'attacker' },
+      { role: 'target', name: 'Bob' },
+      { role: 'target', name: 'Cy' }
+    ])
+    const hints = nav.querySelector('.first-game-hints')
+    expect(hints.hidden).toBe(false)
+    expect(hints.textContent).toContain('You have 2 opponents')
+    expect(Array.from(nav.querySelectorAll('.player-bar-entry')).map(entry => entry.classList.contains('is-target'))).toEqual([false, true, true])
+    // Opening the menu puts the hints away (they'd overlap on a phone), and they count as seen
+    nav.querySelector('.player-bar-menu').click()
+    expect(hints.hidden).toBe(true)
+    expect(localStorage.getItem('cloakfall:hints-seen')).toBe('1')
+    nav.querySelector('.player-bar-help').click()
+    expect(hints.hidden).toBe(false)
+    expect(nav.querySelector('.player-bar-panel').hidden).toBe(true)
+    localStorage.clear()
+  })
+
   test('tapping an opponent shows their board', async () => {
     const { nav, style } = await setUp([
       { role: 'own', name: 'Ann', turn: 'attacker' },

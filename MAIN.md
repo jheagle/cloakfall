@@ -75,6 +75,9 @@ After `npx release-it --no-increment` on `main`:
    npm run build && npx gulp copyFiles && npm run docs
    cd ../joshuaheagle.local && npm run build:fingerprint && npm test
    ```
+   `copyFiles` also copies this repo's `status.html`, which has no lobby tag: put the `cloakfall-lobby` meta tag
+   (above) back in the site's `projects/cloakfall/status.html`, or the status page always says the server is down
+   (CLOA-37). The website's `npm test` fails until it's there.
    Open a website PR with `projects/cloakfall/` (bundle, CSS, `play.html` fingerprints, docs). Once it's merged, check
    `play.html` loads the new `cloakfall.js?v=...` and the bundle's `exports.version` is the new version.
 2. **Lobby server** (`cloakfall.joshuaheagle.com`: a VPS running this repo's `Dockerfile` behind a reverse proxy). On

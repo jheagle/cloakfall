@@ -18,8 +18,9 @@ export const TURN_DEADLINE_EVENT = 'cloakfall:turn-deadline'
 
 /**
  * What the banner says for a turn: the viewer's own ("Your turn, Ann": in local multiplayer the player holding the
- * device), someone else's while the viewer waits, or, with no viewer at all (robots only), who is firing. Null between
- * turns (nobody firing), when the banner keeps what it said.
+ * device; "Your turn, Ann: choose a target" with two or more boards to fire at), someone else's while the viewer
+ * waits, or, with no viewer at all (robots only), who is firing. Null between turns (nobody firing), when the banner
+ * keeps what it said.
  * @param players
  */
 export const turnText = (players: BarPlayer[]): string | null => {
@@ -28,7 +29,8 @@ export const turnText = (players: BarPlayer[]): string | null => {
     return null
   }
   if (attacker.own) {
-    return `Your turn, ${attacker.name}`
+    // Several boards to fire at: say there is a choice, or everyone fires at the first one shown (CLOA-24)
+    return players.filter(player => player.target).length > 1 ? `Your turn, ${attacker.name}: choose a target` : `Your turn, ${attacker.name}`
   }
   return players.some(player => player.own) ? `Waiting for ${attacker.name} to fire` : `${attacker.name} is firing`
 }

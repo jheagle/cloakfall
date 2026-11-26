@@ -11,6 +11,7 @@
  */
 
 import createControlPanel from './controlPanel'
+import createFirstGameHints from './firstGameHints'
 import createTurnBanner from './turnBanner'
 import createShotWatcher, { flashShot } from './shotWatcher'
 import type { NewShot } from './shotWatcher'
@@ -291,6 +292,8 @@ const updateEntry = (item: HTMLLIElement, player: BarPlayer, shown: number | nul
     entry.style.setProperty('--player-colour', player.colour)
   }
   entry.classList.toggle('is-attacker', player.turn === 'attacker')
+  // A board the viewer can fire at now: marked, so with several opponents it's plain there is a choice (CLOA-24)
+  entry.classList.toggle('is-target', player.target)
   entry.classList.toggle('is-out', !alive(player))
   setText(name, player.own ? `${player.name} (you)` : player.name)
   setText(status, statusText(player))
@@ -360,8 +363,12 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
   let ownId: string | null = null
   // What the game was last told about the viewer's own board (ownBoardReveal.ts), so it is told only of changes
   let toldOpen: boolean | null = null
-  const menu = createControlPanel(main)
-  nav.prepend(menu.panel)
+  // First-game hints (firstGameHints.ts): on the viewer's first turn, and again from the menu's "How to play"
+  const hints = createFirstGameHints(doc)
+  const menu = createControlPanel(main, () => hints.open(players))
+  nav.prepend(hints.element, menu.panel)
+  // The two cards would overlap on a phone: opening the menu puts the hints away
+  menu.button.addEventListener('click', () => hints.close())
   nav.append(menu.button)
   // Whose turn it is, across the top (turnBanner.ts)
   const banner = createTurnBanner(doc)
@@ -441,6 +448,7 @@ export const installPlayerBar = (main: HTMLElement): (() => void) => {
     // (layouts-custom.sass); robots-only has no own board, so the opponents keep the whole width
     doc.body.classList.toggle('has-own-board', playing && ownNow !== null)
     banner.update(players, playing)
+    hints.update(players, playing)
     if (!playing) {
       shots.reset()
       state = initialBarState()
