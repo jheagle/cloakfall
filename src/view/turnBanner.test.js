@@ -10,6 +10,11 @@ describe('turnText', () => {
     expect(turnText([player('Ann', { own: true, turn: 'attacker' }), player('Bob')])).toBe('Your turn, Ann')
   })
 
+  test('your turn with several boards to fire at: there is a choice (CLOA-24)', () => {
+    expect(turnText([player('Ann', { own: true, turn: 'attacker' }), player('Bob', { target: true }), player('Cat', { target: true })]))
+      .toBe('Your turn, Ann: choose a target')
+  })
+
   test('someone else\'s turn while you wait', () => {
     expect(turnText([player('Ann', { own: true }), player('Bob', { turn: 'attacker' })])).toBe('Waiting for Bob to fire')
   })

@@ -1,5 +1,6 @@
 /**
- * The menu behind the player bar's ☰ button: "My controls", then "Game" (restart, quit, leave...).
+ * The menu behind the player bar's ☰ button: "My controls", then "Game" (restart, quit, leave...), then "How to play"
+ * (the first-game hints again, firstGameHints.ts).
  *
  * Like the bar, it lives outside the game's tree. Its switches don't hold any state of their own: each mirrors a
  * control the game already renders (the sensor-scan checkbox in the viewer's own player panel, robots-only's "Show
@@ -62,8 +63,9 @@ export interface ControlPanel {
 /**
  * Build the ☰ button and its panel (not yet in the page: the bar places them).
  * @param main the game's <main>
+ * @param onHelp what the menu's last button, "How to play", does (firstGameHints.ts); no button without it
  */
-export const createControlPanel = (main: HTMLElement): ControlPanel => {
+export const createControlPanel = (main: HTMLElement, onHelp?: () => void): ControlPanel => {
   const doc = main.ownerDocument
   const button = doc.createElement('button')
   button.type = 'button'
@@ -144,6 +146,14 @@ export const createControlPanel = (main: HTMLElement): ControlPanel => {
       item.dataset.action = action.id
       return item
     }))
+  }
+
+  if (onHelp) {
+    const help = panelButton('How to play', () => {
+      setOpen(false)
+      onHelp()
+    }, 'player-bar-action player-bar-help')
+    panel.append(help)
   }
 
   // Which of MIRRORED_CONTROLS the switches were last built for, so they are only rebuilt when that changes

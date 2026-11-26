@@ -29,6 +29,15 @@ describe('createControlPanel', () => {
     expect(menu.button.getAttribute('aria-expanded')).toBe('false')
   })
 
+  test('"How to play" closes the menu and opens the hints; no button without a handler', () => {
+    const onHelp = jest.fn()
+    const menu = createControlPanel(mainWith(), onHelp)
+    menu.setOpen(true)
+    menu.panel.querySelector('.player-bar-help').click()
+    expect([menu.isOpen(), onHelp.mock.calls.length]).toEqual([false, 1])
+    expect(createControlPanel(mainWith()).panel.querySelector('.player-bar-help')).toBeNull()
+  })
+
   test('offers only the controls this game has: the viewer\'s own sensor scan, never another player\'s', () => {
     const menu = createControlPanel(mainWith({ hint: true }))
     menu.setOpen(true)

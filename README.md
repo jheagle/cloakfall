@@ -193,6 +193,9 @@ stylesheets use the same numbers (layouts-custom.sass).</p>
 drawer; on a wide screen, where it is docked and always in view, open whenever there is one. Local multiplayer
 listens (setup/ownBoardReveal.ts).</p>
 </dd>
+<dt><a href="#HINTS_SEEN_KEY">HINTS_SEEN_KEY</a></dt>
+<dd><p>The localStorage key that remembers the hints were seen on this device.</p>
+</dd>
 <dt><a href="#MIRRORED_CONTROLS">MIRRORED_CONTROLS</a></dt>
 <dd><p>The controls the panel offers, in order: only those the current game actually has are shown. The sensor scan is in
 the viewer&#39;s own panel when the game&#39;s hint setting is &quot;optional&quot; (playerStats.ts); &quot;Show all ships&quot; is robots-only
@@ -369,8 +372,9 @@ and a step queued for a game that has since been stopped is skipped.</p>
 </dd>
 <dt><a href="#turnText">turnText(players)</a></dt>
 <dd><p>What the banner says for a turn: the viewer&#39;s own (&quot;Your turn, Ann&quot;: in local multiplayer the player holding the
-device), someone else&#39;s while the viewer waits, or, with no viewer at all (robots only), who is firing. Null between
-turns (nobody firing), when the banner keeps what it said.</p>
+device; &quot;Your turn, Ann: choose a target&quot; with two or more boards to fire at), someone else&#39;s while the viewer
+waits, or, with no viewer at all (robots only), who is firing. Null between turns (nobody firing), when the banner
+keeps what it said.</p>
 </dd>
 <dt><a href="#secondsLeft">secondsLeft()</a></dt>
 <dd><p>Seconds left until a deadline, never below 0.</p>
@@ -455,7 +459,26 @@ outside it, when the game ends, and when the board it shows stops being the view
 turn, so nobody sees another player&#39;s ships by accident). A tap outside only closes it: it never reaches the board
 underneath, so closing the drawer can&#39;t fire a shot.</p>
 </dd>
-<dt><a href="#createControlPanel">createControlPanel(main)</a></dt>
+<dt><a href="#wasSeen">wasSeen()</a></dt>
+<dd><p>Read &quot;seen&quot;, treating a store that throws (private mode, blocked storage) as never seen.</p>
+</dd>
+<dt><a href="#markSeen">markSeen()</a></dt>
+<dd><p>Remember &quot;seen&quot;; a store that throws just means the hints may show again next time.</p>
+</dd>
+<dt><a href="#hintLines">hintLines(players)</a></dt>
+<dd><p>The hints for this game, in order. Only what applies: picking an opponent only with two or more to choose from,
+the own fleet only when the viewer has one.</p>
+</dd>
+<dt><a href="#myTurn">myTurn()</a></dt>
+<dd><p>Whether it is the viewer&#39;s own turn: they have a board to fire at.</p>
+</dd>
+<dt><a href="#createFirstGameHints">createFirstGameHints(doc, store)</a></dt>
+<dd><p>Build the hints card (not yet in the page: the bar places it).</p>
+</dd>
+<dt><a href="#defaultStore">defaultStore()</a></dt>
+<dd><p>The page&#39;s localStorage, or null where there is none (or reading it throws).</p>
+</dd>
+<dt><a href="#createControlPanel">createControlPanel(main, onHelp)</a></dt>
 <dd><p>Build the ☰ button and its panel (not yet in the page: the bar places them).</p>
 </dd>
 <dt><a href="#getLowStatusItems">getLowStatusItems(items)</a></dt>
@@ -1583,6 +1606,12 @@ drawer; on a wide screen, where it is docked and always in view, open whenever t
 listens (setup/ownBoardReveal.ts).
 
 **Kind**: global variable  
+<a name="HINTS_SEEN_KEY"></a>
+
+## HINTS\_SEEN\_KEY
+The localStorage key that remembers the hints were seen on this device.
+
+**Kind**: global variable  
 <a name="MIRRORED_CONTROLS"></a>
 
 ## MIRRORED\_CONTROLS
@@ -1943,8 +1972,9 @@ and a step queued for a game that has since been stopped is skipped.
 
 ## turnText(players)
 What the banner says for a turn: the viewer's own ("Your turn, Ann": in local multiplayer the player holding the
-device), someone else's while the viewer waits, or, with no viewer at all (robots only), who is firing. Null between
-turns (nobody firing), when the banner keeps what it said.
+device; "Your turn, Ann: choose a target" with two or more boards to fire at), someone else's while the viewer
+waits, or, with no viewer at all (robots only), who is firing. Null between turns (nobody firing), when the banner
+keeps what it said.
 
 **Kind**: global function  
 
@@ -2219,9 +2249,57 @@ The viewer picked a board: show it from now on (until the action moves on), and 
 The viewer's own entry: open/close the drawer on a phone; on a wide screen the board is always there, so go to it.
 
 **Kind**: inner method of [<code>installPlayerBar</code>](#installPlayerBar)  
+<a name="wasSeen"></a>
+
+## wasSeen()
+Read "seen", treating a store that throws (private mode, blocked storage) as never seen.
+
+**Kind**: global function  
+<a name="markSeen"></a>
+
+## markSeen()
+Remember "seen"; a store that throws just means the hints may show again next time.
+
+**Kind**: global function  
+<a name="hintLines"></a>
+
+## hintLines(players)
+The hints for this game, in order. Only what applies: picking an opponent only with two or more to choose from,
+the own fleet only when the viewer has one.
+
+**Kind**: global function  
+
+| Param |
+| --- |
+| players | 
+
+<a name="myTurn"></a>
+
+## myTurn()
+Whether it is the viewer's own turn: they have a board to fire at.
+
+**Kind**: global function  
+<a name="createFirstGameHints"></a>
+
+## createFirstGameHints(doc, store)
+Build the hints card (not yet in the page: the bar places it).
+
+**Kind**: global function  
+
+| Param | Description |
+| --- | --- |
+| doc |  |
+| store | where "seen" is remembered (localStorage by default, null for nowhere) |
+
+<a name="defaultStore"></a>
+
+## defaultStore()
+The page's localStorage, or null where there is none (or reading it throws).
+
+**Kind**: global function  
 <a name="createControlPanel"></a>
 
-## createControlPanel(main)
+## createControlPanel(main, onHelp)
 Build the ☰ button and its panel (not yet in the page: the bar places them).
 
 **Kind**: global function  
@@ -2229,9 +2307,10 @@ Build the ☰ button and its panel (not yet in the page: the bar places them).
 | Param | Description |
 | --- | --- |
 | main | the game's <main> |
+| onHelp | what the menu's last button, "How to play", does (firstGameHints.ts); no button without it |
 
 
-* [createControlPanel(main)](#createControlPanel)
+* [createControlPanel(main, onHelp)](#createControlPanel)
     * [~panelButton()](#createControlPanel..panelButton)
     * [~askFirst()](#createControlPanel..askFirst)
     * [~showGameActions()](#createControlPanel..showGameActions)
